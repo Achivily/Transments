@@ -16,6 +16,8 @@ Transments 是一个轻量化图片格式转换器，面向日常高频的图片
 
 ## Preview
 
+![Transments preview](preview/main.png)
+
 当前界面围绕四个核心区域组织：
 
 - 左侧来源选择：选择图片、选择文件夹、格式筛选、递归扫描。
