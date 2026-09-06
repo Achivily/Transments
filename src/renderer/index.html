@@ -13,23 +13,23 @@
         <div class="brand-mark">T</div>
         <div>
           <h1>Transments</h1>
-          <p>Image Converter</p>
+          <p data-i18n="brandSubtitle">Image Converter</p>
         </div>
       </div>
 
       <section class="panel source-panel">
         <div class="panel-title">
-          <span>Source</span>
+          <span data-i18n="sourceTitle">Source</span>
           <span id="sourceBadge" class="badge">Empty</span>
         </div>
         <div class="stack">
-          <button id="pickImagesBtn" class="primary-action" type="button">Choose Images</button>
-          <button id="pickFolderBtn" class="ghost-action" type="button">Choose Folder</button>
+          <button id="pickImagesBtn" class="primary-action" type="button" data-i18n="chooseImages">Choose Images</button>
+          <button id="pickFolderBtn" class="ghost-action" type="button" data-i18n="chooseFolder">Choose Folder</button>
         </div>
         <label class="field">
-          <span>Scan Filter</span>
+          <span data-i18n="scanFilter">Scan Filter</span>
           <select id="formatFilter">
-            <option value="auto">All Images</option>
+            <option value="auto" data-i18n="allImages">All Images</option>
             <option value=".png">PNG</option>
             <option value=".jpg">JPG / JPEG</option>
             <option value=".webp">WebP</option>
@@ -42,34 +42,34 @@
         </label>
         <label class="check-row">
           <input id="recursiveScan" type="checkbox">
-          <span>Include Subfolders</span>
+          <span data-i18n="includeSubfolders">Include Subfolders</span>
         </label>
       </section>
 
       <section class="panel settings-panel">
-        <div class="panel-title">Output</div>
+        <div class="panel-title" data-i18n="outputTitle">Output</div>
         <label class="field">
-          <span>Format</span>
+          <span data-i18n="formatLabel">Format</span>
           <select id="outputFormat">
             <option value="png">PNG</option>
-            <option value="webp">WebP Lossless</option>
-            <option value="avif">AVIF Lossless</option>
+            <option value="webp" data-i18n="webpLossless">WebP Lossless</option>
+            <option value="avif" data-i18n="avifLossless">AVIF Lossless</option>
             <option value="gif">GIF</option>
             <option value="bmp">BMP</option>
             <option value="tiff">TIFF</option>
-            <option value="jpeg">JPEG 100</option>
+            <option value="jpeg" data-i18n="jpeg100">JPEG 100</option>
             <option value="heic">HEIC</option>
           </select>
         </label>
         <label class="check-row">
           <input id="lossless" type="checkbox" checked>
-          <span>Prefer Lossless Encoding</span>
+          <span data-i18n="preferLossless">Prefer Lossless Encoding</span>
         </label>
         <label class="check-row">
           <input id="overwrite" type="checkbox">
-          <span>Overwrite Existing Files</span>
+          <span data-i18n="overwriteExisting">Overwrite Existing Files</span>
         </label>
-        <button id="pickOutputBtn" class="ghost-action" type="button">Choose Output Folder</button>
+        <button id="pickOutputBtn" class="ghost-action" type="button" data-i18n="chooseOutputFolder">Choose Output Folder</button>
         <div id="outputDir" class="path-chip">Not selected</div>
       </section>
     </aside>
@@ -77,34 +77,37 @@
     <section class="workspace">
       <header class="topbar">
         <div>
-          <h2>Batch Conversion</h2>
+          <h2 data-i18n="batchConversion">Batch Conversion</h2>
           <p id="folderPath">Waiting for source</p>
         </div>
         <div class="toolbar">
-          <button id="rescanBtn" class="icon-button" title="Rescan" type="button" disabled>↻</button>
-          <button id="clearBtn" class="icon-button" title="Clear Queue" type="button" disabled>×</button>
+          <button id="languageBtn" class="language-button" title="Switch Language" type="button" data-i18n-title="switchLanguage">
+            <span id="languageLabel">中文</span>
+          </button>
+          <button id="rescanBtn" class="icon-button" title="Rescan" type="button" disabled data-i18n-title="rescan">↻</button>
+          <button id="clearBtn" class="icon-button" title="Clear Queue" type="button" disabled data-i18n-title="clearQueue">×</button>
         </div>
       </header>
 
       <section class="metrics">
         <div>
-          <span>Queued</span>
+          <span data-i18n="queued">Queued</span>
           <strong id="totalCount">0</strong>
         </div>
         <div>
-          <span>Done</span>
+          <span data-i18n="doneMetric">Done</span>
           <strong id="doneCount">0</strong>
         </div>
         <div>
-          <span>Failed</span>
+          <span data-i18n="failedMetric">Failed</span>
           <strong id="failCount">0</strong>
         </div>
       </section>
 
       <section class="queue-area">
         <div id="emptyState" class="empty-state">
-          <strong>Choose images or a folder</strong>
-          <span>PNG, JPEG, WebP, TIFF, AVIF, GIF, BMP, HEIC</span>
+          <strong data-i18n="emptyTitle">Choose images or a folder</strong>
+          <span data-i18n="formatList">PNG, JPEG, WebP, TIFF, AVIF, GIF, BMP, HEIC</span>
         </div>
         <div id="fileList" class="file-list" aria-live="polite"></div>
       </section>
@@ -117,8 +120,8 @@
           <span id="statusText">Ready</span>
         </div>
         <div class="action-buttons">
-          <button id="cancelBtn" class="ghost-action" type="button" disabled>Cancel</button>
-          <button id="convertBtn" class="primary-action" type="button" disabled>Start Conversion</button>
+          <button id="cancelBtn" class="ghost-action" type="button" disabled data-i18n="cancel">Cancel</button>
+          <button id="convertBtn" class="primary-action" type="button" disabled data-i18n="startConversion">Start Conversion</button>
         </div>
       </footer>
     </section>

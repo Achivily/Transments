@@ -63,7 +63,8 @@ select,
 .metrics div,
 .brand-mark,
 .badge,
-.panel {
+.panel,
+.language-button {
   transition:
     transform 220ms var(--ease),
     box-shadow 220ms var(--ease),
@@ -237,7 +238,8 @@ input:focus-visible {
 
 .primary-action::after,
 .ghost-action::after,
-.icon-button::after {
+.icon-button::after,
+.language-button::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -264,13 +266,15 @@ input:focus-visible {
 
 .primary-action:hover:not(:disabled)::after,
 .ghost-action:hover:not(:disabled)::after,
-.icon-button:hover:not(:disabled)::after {
+.icon-button:hover:not(:disabled)::after,
+.language-button:hover:not(:disabled)::after {
   opacity: 1;
 }
 
 .primary-action:active:not(:disabled),
 .ghost-action:active:not(:disabled),
-.icon-button:active:not(:disabled) {
+.icon-button:active:not(:disabled),
+.language-button:active:not(:disabled) {
   transform: translateY(0) scale(0.985);
   transition-duration: 90ms;
 }
@@ -432,6 +436,31 @@ input:focus-visible {
 .toolbar {
   display: flex;
   gap: 8px;
+}
+
+.language-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 64px;
+  height: 38px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-raised);
+  color: var(--muted-strong);
+  font-size: 13px;
+  font-weight: 900;
+  box-shadow: 0 8px 18px rgba(25, 57, 82, 0.08);
+  overflow: hidden;
+}
+
+.language-button:hover:not(:disabled) {
+  transform: translateY(-1px) scale(1.06);
+  border-color: rgba(42, 171, 238, 0.62);
+  color: var(--blue);
+  box-shadow: 0 14px 28px rgba(42, 171, 238, 0.18);
 }
 
 .icon-button {

@@ -2,11 +2,18 @@
 
 > A lightweight, polished image format converter built with Electron.
 
-Transments is a fast desktop image converter for everyday format migration, folder-based batch work, and clean local image workflows. It uses a lean Electron stack with a Telegram-inspired interface: calm, direct, responsive, and polished without getting in the way.
+Transments is a fast desktop image converter for everyday format migration, folder-based batch work, and clean local image workflows. It uses a lean Electron stack with a Telegram-inspired interface: calm, direct, responsive, bilingual, and polished without getting in the way.
+
+## Languages
+
+- English: this file
+- Chinese: [README.zh-CN.md](README.zh-CN.md)
+
+The app supports in-app language switching between English and Chinese from the language/settings button in the top-right toolbar.
 
 ## Preview
 
-![Transments UI preview](preview/main.png)
+![Transments English UI preview](preview/main.png)
 
 The interface is organized around four practical zones:
 
@@ -18,6 +25,7 @@ The interface is organized around four practical zones:
 ## Highlights
 
 - **Lightweight desktop app**: plain HTML/CSS/JS renderer with no frontend build pipeline.
+- **Bilingual interface**: switch between English and Chinese inside the app.
 - **Batch folder conversion**: scan an entire folder and convert only the source format you need.
 - **Custom output location**: send converted files exactly where you want them.
 - **Recursive scanning**: include subfolders while preserving relative directory structure.
@@ -51,9 +59,11 @@ The interface is organized around four practical zones:
 ```text
 Transments
 |-- preview
-|   `-- main.png
+|   |-- main.png
+|   `-- main.zh-CN.png
 |-- scripts
-|   `-- capture-preview.js
+|   |-- capture-preview.js
+|   `-- verify-i18n.js
 |-- src
 |   |-- main
 |   |   |-- index.js
@@ -67,7 +77,8 @@ Transments
 |-- test
 |   `-- converter.test.js
 |-- package.json
-`-- README.md
+|-- README.md
+`-- README.zh-CN.md
 ```
 
 ## Getting Started
@@ -90,10 +101,28 @@ Run tests:
 npm test
 ```
 
-Regenerate the README preview screenshot:
+Verify in-app language switching:
 
 ```bash
-npm run capture:preview
+npm run verify:i18n
+```
+
+Regenerate preview screenshots:
+
+```bash
+npm run capture:preview:all
+```
+
+Generate only the English preview:
+
+```bash
+npm run capture:preview:en
+```
+
+Generate only the Chinese preview:
+
+```bash
+npm run capture:preview:zh
 ```
 
 ## Usage
@@ -104,6 +133,7 @@ npm run capture:preview
 4. Choose a target format in the **Output** section.
 5. Click **Choose Output Folder** to select where converted files should be written.
 6. Click **Start Conversion** and watch progress in the queue.
+7. Use the language/settings button in the top-right toolbar to switch between English and Chinese.
 
 ## Design Notes
 
@@ -113,7 +143,7 @@ Transments is designed as a practical productivity tool, not a landing page. The
 - A bright workspace keeps the queue readable and scannable.
 - Buttons, selects, checkboxes, queue rows, and status elements use smooth hover, active, and focus transitions.
 - Button hover states include subtle scale and shadow changes for a premium tactile feel.
-- The font stack prefers `HarmonyOS Sans SC`, with strong weights throughout for crisp desktop readability.
+- The font stack prefers `HarmonyOS Sans SC`, with strong weights throughout for crisp desktop readability in both languages.
 
 ## Development Notes
 

@@ -7,6 +7,10 @@
   "scripts": {
     "start": "electron .",
     "capture:preview": "electron scripts/capture-preview.js",
+    "capture:preview:en": "electron scripts/capture-preview.js --lang en --output preview/main.png",
+    "capture:preview:zh": "electron scripts/capture-preview.js --lang zh-CN --output preview/main.zh-CN.png",
+    "capture:preview:all": "npm run capture:preview:en && npm run capture:preview:zh",
+    "verify:i18n": "electron scripts/verify-i18n.js",
     "test": "node test/converter.test.js",
     "test:converter": "node test/converter.test.js"
   },
