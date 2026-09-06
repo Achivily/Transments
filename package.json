@@ -1,11 +1,14 @@
 {
   "name": "transments",
   "productName": "Transments",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Lightweight image format converter (PNG/JPEG/WebP/TIFF/AVIF/GIF/BMP/HEIC) with batch folder conversion",
+  "author": "Achivily",
   "main": "src/main/index.js",
   "scripts": {
     "start": "electron .",
+    "dist": "electron-builder --win portable",
+    "dist:win": "electron-builder --win portable",
     "capture:preview": "electron scripts/capture-preview.js",
     "capture:preview:en": "electron scripts/capture-preview.js --lang en --output preview/main.png",
     "capture:preview:zh": "electron scripts/capture-preview.js --lang zh-CN --output preview/main.zh-CN.png",
@@ -15,11 +18,39 @@
     "test:converter": "node test/converter.test.js"
   },
   "devDependencies": {
-    "electron": "^33.0.0"
+    "electron": "^33.0.0",
+    "electron-builder": "^26.15.3"
   },
   "dependencies": {
     "elheif": "^0.1.0",
     "heic-decode": "^2.1.0",
     "sharp": "^0.35.4"
+  },
+  "build": {
+    "appId": "com.achivily.transments",
+    "productName": "Transments",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "asar": true,
+    "asarUnpack": [
+      "node_modules/sharp/**/*",
+      "node_modules/@img/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
+    }
   }
 }
