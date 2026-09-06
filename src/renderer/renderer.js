@@ -44,7 +44,7 @@ function setStatus(text) {
 }
 
 function shortPath(value) {
-  if (!value) return '未选择';
+  if (!value) return 'Not selected';
   return value.length > 58 ? `...${value.slice(-55)}` : value;
 }
 
@@ -61,12 +61,12 @@ function fileSize(bytes) {
 }
 
 function paint() {
-  nodes.sourceBadge.textContent = state.files.length ? `${state.files.length}` : '空';
+  nodes.sourceBadge.textContent = state.files.length ? `${state.files.length}` : 'Empty';
   nodes.totalCount.textContent = state.files.length;
   nodes.doneCount.textContent = state.done;
   nodes.failCount.textContent = state.failed;
   nodes.outputDir.textContent = shortPath(state.outputDir);
-  nodes.folderPath.textContent = state.folderPath ? shortPath(state.folderPath) : '等待选择来源';
+  nodes.folderPath.textContent = state.folderPath ? shortPath(state.folderPath) : 'Waiting for source';
   nodes.emptyState.style.display = state.files.length ? 'none' : 'grid';
   nodes.convertBtn.disabled = state.running || !state.files.length || !state.outputDir;
   nodes.cancelBtn.disabled = !state.running;
@@ -104,10 +104,10 @@ function renderFiles() {
 }
 
 function statusText(status) {
-  if (status === 'done') return '完成';
-  if (status === 'error') return '失败';
-  if (status === 'running') return '处理中';
-  return '等待';
+  if (status === 'done') return 'Done';
+  if (status === 'error') return 'Failed';
+  if (status === 'running') return 'Processing';
+  return 'Waiting';
 }
 
 function setProgress(done, total) {
@@ -126,15 +126,15 @@ async function loadFolder(folderPath = state.folderPath) {
   if (!folderPath) return;
   state.mode = 'folder';
   state.folderPath = folderPath;
-  setStatus('正在扫描...');
+  setStatus('Scanning...');
   paint();
   try {
     state.files = await api.scanFolder(folderPath, nodes.formatFilter.value, nodes.recursiveScan.checked);
     resetRunState();
     renderFiles();
-    setStatus(state.files.length ? `已加入 ${state.files.length} 个文件` : '没有匹配文件');
+    setStatus(state.files.length ? `Added ${state.files.length} files` : 'No matching files');
   } catch (err) {
-    setStatus(err.message || '扫描失败');
+    setStatus(err.message || 'Scan failed');
   }
 }
 
@@ -142,7 +142,7 @@ nodes.pickImagesBtn.addEventListener('click', async () => {
   const files = await api.pickImages();
   if (!files.length) return;
   state.mode = 'files';
-  state.folderPath = `${files.length} 个独立文件`;
+  state.folderPath = `${files.length} selected files`;
   state.files = files.map((file) => ({
     path: file.path,
     name: file.name,
@@ -150,7 +150,7 @@ nodes.pickImagesBtn.addEventListener('click', async () => {
   }));
   resetRunState();
   renderFiles();
-  setStatus(`已加入 ${files.length} 个文件`);
+  setStatus(`Added ${files.length} files`);
 });
 
 nodes.pickFolderBtn.addEventListener('click', async () => {
@@ -162,7 +162,7 @@ nodes.pickOutputBtn.addEventListener('click', async () => {
   const folder = await api.pickFolder();
   if (!folder) return;
   state.outputDir = folder;
-  setStatus(`输出到 ${shortPath(folder)}`);
+  setStatus(`Output set to ${shortPath(folder)}`);
   paint();
 });
 
@@ -174,7 +174,7 @@ nodes.clearBtn.addEventListener('click', () => {
   state.folderPath = null;
   resetRunState();
   renderFiles();
-  setStatus('队列已清空');
+  setStatus('Queue cleared');
 });
 
 nodes.formatFilter.addEventListener('change', () => {
@@ -190,7 +190,7 @@ nodes.convertBtn.addEventListener('click', async () => {
   state.running = true;
   resetRunState();
   renderFiles();
-  setStatus('转换中...');
+  setStatus('Converting...');
   paint();
   const result = await api.startConversion({
     files: state.files,
@@ -204,16 +204,16 @@ nodes.convertBtn.addEventListener('click', async () => {
     state.done = result.succeeded;
     state.failed = result.failed;
     setProgress(state.done + state.failed, state.files.length);
-    setStatus(result.cancelled ? '已取消' : `完成 ${result.succeeded} 个，失败 ${result.failed} 个`);
+    setStatus(result.cancelled ? 'Cancelled' : `Completed ${result.succeeded}, failed ${result.failed}`);
   } else {
-    setStatus(result.error || '转换失败');
+    setStatus(result.error || 'Conversion failed');
   }
   paint();
 });
 
 nodes.cancelBtn.addEventListener('click', async () => {
   await api.cancelConversion();
-  setStatus('正在取消...');
+  setStatus('Cancelling...');
 });
 
 api.onConversionProgress((info) => {

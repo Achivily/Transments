@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -19,17 +19,17 @@
 
       <section class="panel source-panel">
         <div class="panel-title">
-          <span>来源</span>
-          <span id="sourceBadge" class="badge">空</span>
+          <span>Source</span>
+          <span id="sourceBadge" class="badge">Empty</span>
         </div>
         <div class="stack">
-          <button id="pickImagesBtn" class="primary-action" type="button">选择图片</button>
-          <button id="pickFolderBtn" class="ghost-action" type="button">选择文件夹</button>
+          <button id="pickImagesBtn" class="primary-action" type="button">Choose Images</button>
+          <button id="pickFolderBtn" class="ghost-action" type="button">Choose Folder</button>
         </div>
         <label class="field">
-          <span>仅扫描</span>
+          <span>Scan Filter</span>
           <select id="formatFilter">
-            <option value="auto">全部图片</option>
+            <option value="auto">All Images</option>
             <option value=".png">PNG</option>
             <option value=".jpg">JPG / JPEG</option>
             <option value=".webp">WebP</option>
@@ -42,14 +42,14 @@
         </label>
         <label class="check-row">
           <input id="recursiveScan" type="checkbox">
-          <span>包含子文件夹</span>
+          <span>Include Subfolders</span>
         </label>
       </section>
 
       <section class="panel settings-panel">
-        <div class="panel-title">输出</div>
+        <div class="panel-title">Output</div>
         <label class="field">
-          <span>格式</span>
+          <span>Format</span>
           <select id="outputFormat">
             <option value="png">PNG</option>
             <option value="webp">WebP Lossless</option>
@@ -63,48 +63,48 @@
         </label>
         <label class="check-row">
           <input id="lossless" type="checkbox" checked>
-          <span>优先无损编码</span>
+          <span>Prefer Lossless Encoding</span>
         </label>
         <label class="check-row">
           <input id="overwrite" type="checkbox">
-          <span>覆盖同名文件</span>
+          <span>Overwrite Existing Files</span>
         </label>
-        <button id="pickOutputBtn" class="ghost-action" type="button">指定输出位置</button>
-        <div id="outputDir" class="path-chip">未选择</div>
+        <button id="pickOutputBtn" class="ghost-action" type="button">Choose Output Folder</button>
+        <div id="outputDir" class="path-chip">Not selected</div>
       </section>
     </aside>
 
     <section class="workspace">
       <header class="topbar">
         <div>
-          <h2>批量转换</h2>
-          <p id="folderPath">等待选择来源</p>
+          <h2>Batch Conversion</h2>
+          <p id="folderPath">Waiting for source</p>
         </div>
         <div class="toolbar">
-          <button id="rescanBtn" class="icon-button" title="重新扫描" type="button" disabled>↻</button>
-          <button id="clearBtn" class="icon-button" title="清空队列" type="button" disabled>×</button>
+          <button id="rescanBtn" class="icon-button" title="Rescan" type="button" disabled>↻</button>
+          <button id="clearBtn" class="icon-button" title="Clear Queue" type="button" disabled>×</button>
         </div>
       </header>
 
       <section class="metrics">
         <div>
-          <span>队列</span>
+          <span>Queued</span>
           <strong id="totalCount">0</strong>
         </div>
         <div>
-          <span>完成</span>
+          <span>Done</span>
           <strong id="doneCount">0</strong>
         </div>
         <div>
-          <span>失败</span>
+          <span>Failed</span>
           <strong id="failCount">0</strong>
         </div>
       </section>
 
       <section class="queue-area">
         <div id="emptyState" class="empty-state">
-          <strong>选择图片或文件夹</strong>
-          <span>PNG、JPEG、WebP、TIFF、AVIF、GIF、BMP、HEIC</span>
+          <strong>Choose images or a folder</strong>
+          <span>PNG, JPEG, WebP, TIFF, AVIF, GIF, BMP, HEIC</span>
         </div>
         <div id="fileList" class="file-list" aria-live="polite"></div>
       </section>
@@ -114,11 +114,11 @@
           <div class="progress-track">
             <div id="progressBar" class="progress-bar"></div>
           </div>
-          <span id="statusText">准备就绪</span>
+          <span id="statusText">Ready</span>
         </div>
         <div class="action-buttons">
-          <button id="cancelBtn" class="ghost-action" type="button" disabled>取消</button>
-          <button id="convertBtn" class="primary-action" type="button" disabled>开始转换</button>
+          <button id="cancelBtn" class="ghost-action" type="button" disabled>Cancel</button>
+          <button id="convertBtn" class="primary-action" type="button" disabled>Start Conversion</button>
         </div>
       </footer>
     </section>

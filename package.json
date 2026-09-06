@@ -6,6 +6,7 @@
   "main": "src/main/index.js",
   "scripts": {
     "start": "electron .",
+    "capture:preview": "electron scripts/capture-preview.js",
     "test": "node test/converter.test.js",
     "test:converter": "node test/converter.test.js"
   },
