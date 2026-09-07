@@ -8,8 +8,10 @@ contextBridge.exposeInMainWorld('transments', {
   pickFolder: () => ipcRenderer.invoke('dialog:pickFolder'),
   pickImages: () => ipcRenderer.invoke('dialog:pickImages'),
   scanFolder: (folderPath, formatFilter, recursive) => ipcRenderer.invoke('scan:folder', folderPath, formatFilter, recursive),
+  resolveDroppedPaths: (paths, formatFilter, recursive) => ipcRenderer.invoke('files:resolveDropped', paths, formatFilter, recursive),
   startConversion: (payload) => ipcRenderer.invoke('convert:start', payload),
   cancelConversion: () => ipcRenderer.invoke('convert:cancel'),
+  openPath: (targetPath) => ipcRenderer.invoke('shell:openPath', targetPath),
   onConversionProgress: (handler) => {
     if (!validProgressHandler(handler)) return () => {};
     const listener = (_event, info) => handler(info);

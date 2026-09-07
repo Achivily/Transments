@@ -49,6 +49,10 @@ async function run() {
   const recursive = await service.scanFolder(inputDir, '.png', true);
   assert.strictEqual(recursive.length, 2);
 
+  const resolvedDrop = await service.resolvePaths([inputDir, path.join(inputDir, 'sample.png')], '.png', true);
+  assert.strictEqual(resolvedDrop.length, 2);
+  assert.deepStrictEqual(resolvedDrop.map((file) => file.name).sort(), ['nested.png', 'sample.png']);
+
   for (const format of ['png', 'jpeg', 'webp', 'tiff', 'avif', 'gif', 'bmp', 'heic']) {
     const formatOutputDir = path.join(outputDir, format);
     const result = await service.start({

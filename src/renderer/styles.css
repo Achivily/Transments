@@ -60,6 +60,8 @@ select,
 .check-row,
 .path-chip,
 .file-row,
+.preset-button,
+.result-panel,
 .metrics div,
 .brand-mark,
 .badge,
@@ -114,7 +116,10 @@ input:focus-visible {
     linear-gradient(180deg, rgba(37, 54, 68, 0.86), rgba(23, 33, 43, 1)),
     var(--sidebar);
   color: #eef7ff;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(42, 171, 238, 0.34) transparent;
 }
 
 .sidebar::before {
@@ -125,6 +130,17 @@ input:focus-visible {
   background:
     linear-gradient(90deg, rgba(42, 171, 238, 0.1), transparent 34%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 26%);
+}
+
+.sidebar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: rgba(42, 171, 238, 0.32);
+  background-clip: content-box;
 }
 
 .sidebar > * {
@@ -398,9 +414,68 @@ input:focus-visible {
   color: #d3e6f4;
 }
 
+.preset-group {
+  margin-bottom: 12px;
+}
+
+.preset-heading {
+  margin-bottom: 8px;
+  color: #bdccda;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.preset-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.preset-button {
+  display: grid;
+  gap: 2px;
+  min-height: 52px;
+  padding: 8px 10px;
+  border: 1px solid rgba(145, 165, 184, 0.24);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.034);
+  color: #f5faff;
+  text-align: left;
+}
+
+.preset-button span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.preset-button small {
+  overflow: hidden;
+  color: #95aabc;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.preset-button:hover:not(:disabled) {
+  transform: translateY(-1px) scale(1.02);
+  border-color: rgba(42, 171, 238, 0.58);
+  background: rgba(42, 171, 238, 0.1);
+  box-shadow: 0 10px 22px rgba(3, 16, 27, 0.18);
+}
+
+.preset-button.active {
+  border-color: rgba(42, 171, 238, 0.76);
+  background: rgba(42, 171, 238, 0.15);
+  box-shadow: inset 0 0 0 1px rgba(42, 171, 238, 0.18);
+}
+
 .workspace {
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
   min-width: 0;
   height: 100vh;
   background:
@@ -545,6 +620,47 @@ input:focus-visible {
   background: linear-gradient(180deg, rgba(42, 171, 238, 0.035), transparent 30%);
 }
 
+.queue-area.drag-over {
+  border-color: rgba(42, 171, 238, 0.78);
+  box-shadow: 0 22px 58px rgba(42, 171, 238, 0.22);
+}
+
+.drop-overlay {
+  position: absolute;
+  inset: 14px;
+  z-index: 3;
+  display: grid;
+  place-content: center;
+  gap: 8px;
+  border: 2px dashed rgba(42, 171, 238, 0.62);
+  border-radius: 8px;
+  background: rgba(231, 246, 254, 0.94);
+  color: var(--muted-strong);
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.985);
+  transition:
+    opacity 180ms var(--ease),
+    transform 180ms var(--ease);
+}
+
+.queue-area.drag-over .drop-overlay {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.drop-overlay strong {
+  color: var(--text);
+  font-size: 19px;
+  font-weight: 900;
+}
+
+.drop-overlay span {
+  font-size: 13px;
+  font-weight: 800;
+}
+
 .empty-state {
   position: absolute;
   inset: 0;
@@ -665,6 +781,60 @@ input:focus-visible {
   border-top: 1px solid rgba(198, 214, 226, 0.74);
   background: rgba(255, 255, 255, 0.88);
   backdrop-filter: blur(16px);
+}
+
+.result-panel {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(180px, 0.9fr) auto;
+  gap: 14px;
+  align-items: center;
+  margin: 0 24px 14px;
+  padding: 13px 14px;
+  border: 1px solid rgba(198, 214, 226, 0.84);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: var(--shadow-soft);
+}
+
+.result-panel[hidden] {
+  display: none;
+}
+
+.result-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.result-copy span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.result-copy strong {
+  overflow: hidden;
+  color: var(--text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.result-copy small,
+.result-failures {
+  overflow: hidden;
+  color: var(--muted-strong);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.result-failures {
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--surface-soft);
 }
 
 .progress-wrap {

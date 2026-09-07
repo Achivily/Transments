@@ -74,6 +74,41 @@ class ConversionService extends EventEmitter {
     return files;
   }
 
+  async resolvePaths(inputPaths, formatFilter, recursive = false) {
+    const files = [];
+    const seen = new Set();
+    for (const inputPath of inputPaths || []) {
+      if (!inputPath || seen.has(inputPath.toLowerCase())) continue;
+      let stat;
+      try {
+        stat = await fs.stat(inputPath);
+      } catch {
+        continue;
+      }
+      if (stat.isDirectory()) {
+        const scanned = await this.scanFolder(inputPath, formatFilter, recursive);
+        for (const file of scanned) {
+          const key = file.path.toLowerCase();
+          if (seen.has(key)) continue;
+          seen.add(key);
+          files.push(file);
+        }
+        continue;
+      }
+      if (!stat.isFile()) continue;
+      const ext = path.extname(inputPath).toLowerCase();
+      if (!SUPPORTED_INPUT.has(ext) || !formatMatches(ext, formatFilter)) continue;
+      seen.add(inputPath.toLowerCase());
+      files.push({
+        path: inputPath,
+        name: path.basename(inputPath),
+        size: stat.size
+      });
+    }
+    files.sort((a, b) => (a.relativePath || a.name).localeCompare(b.relativePath || b.name, undefined, { numeric: true }));
+    return files;
+  }
+
   cancel() {
     if (this.running) this.cancelled = true;
     return this.cancelled;

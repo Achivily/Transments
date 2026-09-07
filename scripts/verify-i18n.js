@@ -26,6 +26,9 @@ async function verifyI18n() {
   assertEqual(first.lang, 'en', 'initial document language');
   assertEqual(first.heading, 'Batch Conversion', 'initial English heading');
   assertEqual(first.source, 'Source', 'initial English source label');
+  assertEqual(first.preset, 'Presets', 'initial English preset label');
+  assertEqual(first.result, 'Conversion Results', 'initial English result label');
+  assertEqual(first.drop, 'Drop images or folders', 'initial English drop label');
   assertEqual(first.languageButton, '中文', 'initial language button target');
 
   await window.webContents.executeJavaScript('document.getElementById("languageBtn").click()');
@@ -33,6 +36,9 @@ async function verifyI18n() {
   assertEqual(second.lang, 'zh-CN', 'switched document language');
   assertEqual(second.heading, '批量转换', 'switched Chinese heading');
   assertEqual(second.source, '来源', 'switched Chinese source label');
+  assertEqual(second.preset, '转换预设', 'switched Chinese preset label');
+  assertEqual(second.result, '转换结果', 'switched Chinese result label');
+  assertEqual(second.drop, '拖入图片或文件夹', 'switched Chinese drop label');
   assertEqual(second.languageButton, 'English', 'switched language button target');
 
   await window.webContents.executeJavaScript('document.getElementById("languageBtn").click()');
@@ -49,6 +55,9 @@ function snapshot(window) {
     lang: document.documentElement.lang,
     heading: document.querySelector('[data-i18n="batchConversion"]').textContent,
     source: document.querySelector('[data-i18n="sourceTitle"]').textContent,
+    preset: document.querySelector('[data-i18n="presetTitle"]').textContent,
+    result: document.querySelector('[data-i18n="resultTitle"]').textContent,
+    drop: document.querySelector('[data-i18n="dropTitle"]').textContent,
     languageButton: document.getElementById('languageLabel').textContent
   })`);
 }

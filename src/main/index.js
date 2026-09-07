@@ -72,11 +72,21 @@ function registerIpc() {
     return conversionService.scanFolder(folderPath, formatFilter, recursive);
   });
 
+  ipcMain.handle('files:resolveDropped', async (_e, inputPaths, formatFilter, recursive) => {
+    return conversionService.resolvePaths(inputPaths, formatFilter, recursive);
+  });
+
   ipcMain.handle('convert:start', async (_e, payload) => {
     return conversionService.start(payload);
   });
 
   ipcMain.handle('convert:cancel', () => conversionService.cancel());
+
+  ipcMain.handle('shell:openPath', async (_e, targetPath) => {
+    if (!targetPath) return { ok: false, error: 'No path selected' };
+    const error = await shell.openPath(targetPath);
+    return error ? { ok: false, error } : { ok: true };
+  });
 
   conversionService.on('progress', (info) => {
     if (mainWindow && !mainWindow.isDestroyed()) {

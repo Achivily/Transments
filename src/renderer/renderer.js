@@ -14,6 +14,15 @@ const translations = {
     allImages: 'All Images',
     includeSubfolders: 'Include Subfolders',
     outputTitle: 'Output',
+    presetTitle: 'Presets',
+    presetWebp: 'WebP Archive',
+    presetWebpMeta: 'Lossless, recursive',
+    presetJpeg: 'JPEG Share',
+    presetJpegMeta: 'Compact, high quality',
+    presetHeic: 'HEIC to PNG',
+    presetHeicMeta: 'Filter HEIC/HEIF',
+    presetAvif: 'AVIF Batch',
+    presetAvifMeta: 'Lossless folder mode',
     formatLabel: 'Format',
     webpLossless: 'WebP Lossless',
     avifLossless: 'AVIF Lossless',
@@ -31,7 +40,15 @@ const translations = {
     doneMetric: 'Done',
     failedMetric: 'Failed',
     emptyTitle: 'Choose images or a folder',
-    formatList: 'PNG, JPEG, WebP, TIFF, AVIF, GIF, BMP, HEIC',
+    formatList: 'PNG, JPEG, WebP, TIFF, AVIF, GIF, BMP, HEIC, or drag them here',
+    dropTitle: 'Drop images or folders',
+    dropHint: 'The current scan filter and subfolder option will be used.',
+    resultTitle: 'Conversion Results',
+    openOutputFolder: 'Open Output Folder',
+    resultSummary: '{succeeded} done, {failed} failed',
+    resultOutput: 'Output: {path}',
+    noFailures: 'No failed files',
+    failureSummary: '{count} failed: {files}',
     ready: 'Ready',
     cancel: 'Cancel',
     startConversion: 'Start Conversion',
@@ -41,16 +58,20 @@ const translations = {
     failed: 'Failed',
     processing: 'Processing',
     scanning: 'Scanning...',
+    resolvingDrop: 'Reading dropped items...',
+    droppedItems: '{count} dropped files',
     addedFiles: 'Added {count} files',
     noMatchingFiles: 'No matching files',
     scanFailed: 'Scan failed',
     selectedFiles: '{count} selected files',
     outputSet: 'Output set to {path}',
     queueCleared: 'Queue cleared',
+    presetApplied: 'Applied preset: {name}',
     converting: 'Converting...',
     cancelled: 'Cancelled',
     completed: 'Completed {succeeded}, failed {failed}',
     conversionFailed: 'Conversion failed',
+    openOutputFailed: 'Could not open output folder',
     cancelling: 'Cancelling...'
   },
   zh: {
@@ -63,6 +84,15 @@ const translations = {
     allImages: '全部图片',
     includeSubfolders: '包含子文件夹',
     outputTitle: '输出',
+    presetTitle: '转换预设',
+    presetWebp: 'WebP 归档',
+    presetWebpMeta: '无损，递归',
+    presetJpeg: 'JPEG 分享',
+    presetJpegMeta: '轻量，高质量',
+    presetHeic: 'HEIC 转 PNG',
+    presetHeicMeta: '筛选 HEIC/HEIF',
+    presetAvif: 'AVIF 批量',
+    presetAvifMeta: '无损文件夹模式',
     formatLabel: '格式',
     webpLossless: 'WebP 无损',
     avifLossless: 'AVIF 无损',
@@ -80,7 +110,15 @@ const translations = {
     doneMetric: '完成',
     failedMetric: '失败',
     emptyTitle: '选择图片或文件夹',
-    formatList: 'PNG、JPEG、WebP、TIFF、AVIF、GIF、BMP、HEIC',
+    formatList: 'PNG、JPEG、WebP、TIFF、AVIF、GIF、BMP、HEIC，也可以拖到这里',
+    dropTitle: '拖入图片或文件夹',
+    dropHint: '会使用当前扫描筛选和子文件夹选项。',
+    resultTitle: '转换结果',
+    openOutputFolder: '打开输出文件夹',
+    resultSummary: '完成 {succeeded} 个，失败 {failed} 个',
+    resultOutput: '输出：{path}',
+    noFailures: '没有失败文件',
+    failureSummary: '{count} 个失败：{files}',
     ready: '准备就绪',
     cancel: '取消',
     startConversion: '开始转换',
@@ -90,17 +128,52 @@ const translations = {
     failed: '失败',
     processing: '处理中',
     scanning: '正在扫描...',
+    resolvingDrop: '正在读取拖入项目...',
+    droppedItems: '{count} 个拖入文件',
     addedFiles: '已加入 {count} 个文件',
     noMatchingFiles: '没有匹配文件',
     scanFailed: '扫描失败',
     selectedFiles: '{count} 个独立文件',
     outputSet: '输出到 {path}',
     queueCleared: '队列已清空',
+    presetApplied: '已应用预设：{name}',
     converting: '转换中...',
     cancelled: '已取消',
     completed: '完成 {succeeded} 个，失败 {failed} 个',
     conversionFailed: '转换失败',
+    openOutputFailed: '无法打开输出文件夹',
     cancelling: '正在取消...'
+  }
+};
+
+const presets = {
+  webpArchive: {
+    labelKey: 'presetWebp',
+    formatFilter: 'auto',
+    outputFormat: 'webp',
+    lossless: true,
+    recursive: true
+  },
+  jpegShare: {
+    labelKey: 'presetJpeg',
+    formatFilter: 'auto',
+    outputFormat: 'jpeg',
+    lossless: false,
+    recursive: false
+  },
+  heicToPng: {
+    labelKey: 'presetHeic',
+    formatFilter: '.heic',
+    outputFormat: 'png',
+    lossless: true,
+    recursive: false
+  },
+  folderAvif: {
+    labelKey: 'presetAvif',
+    formatFilter: 'auto',
+    outputFormat: 'avif',
+    lossless: true,
+    recursive: true
   }
 };
 
@@ -113,7 +186,10 @@ const state = {
   done: 0,
   failed: 0,
   language: initialLanguage(),
-  status: { key: 'ready', params: {} }
+  status: { key: 'ready', params: {} },
+  activePreset: null,
+  lastResult: null,
+  dragDepth: 0
 };
 
 const $ = (id) => document.getElementById(id);
@@ -142,7 +218,14 @@ const nodes = {
   progressBar: $('progressBar'),
   statusText: $('statusText'),
   fileList: $('fileList'),
-  emptyState: $('emptyState')
+  emptyState: $('emptyState'),
+  queueArea: document.querySelector('.queue-area'),
+  resultPanel: $('resultPanel'),
+  resultSummary: $('resultSummary'),
+  resultOutput: $('resultOutput'),
+  resultFailures: $('resultFailures'),
+  openOutputBtn: $('openOutputBtn'),
+  presetButtons: Array.from(document.querySelectorAll('[data-preset]'))
 };
 
 function initialLanguage() {
@@ -218,12 +301,21 @@ function paint() {
   nodes.cancelBtn.disabled = !state.running;
   nodes.clearBtn.disabled = state.running || !state.files.length;
   nodes.rescanBtn.disabled = state.running || state.mode !== 'folder' || !state.folderPath;
+  updatePresetButtons();
+  renderResults();
 }
 
 function sourceLabel() {
   if (state.mode === 'files') return t('selectedFiles', { count: state.files.length });
+  if (state.mode === 'drop') return t('droppedItems', { count: state.files.length });
   if (state.folderPath) return shortPath(state.folderPath);
   return t('waitingForSource');
+}
+
+function updatePresetButtons() {
+  nodes.presetButtons.forEach((button) => {
+    button.classList.toggle('active', button.dataset.preset === state.activePreset);
+  });
 }
 
 function renderFiles() {
@@ -255,6 +347,28 @@ function renderFiles() {
   paint();
 }
 
+function renderResults() {
+  if (!state.lastResult || !state.lastResult.ok) {
+    nodes.resultPanel.hidden = true;
+    return;
+  }
+  const failed = (state.lastResult.results || []).filter((item) => !item.ok);
+  nodes.resultPanel.hidden = false;
+  nodes.resultSummary.textContent = t('resultSummary', {
+    succeeded: state.lastResult.succeeded,
+    failed: state.lastResult.failed
+  });
+  nodes.resultOutput.textContent = t('resultOutput', { path: shortPath(state.outputDir) });
+  if (!failed.length) {
+    nodes.resultFailures.textContent = t('noFailures');
+    return;
+  }
+  nodes.resultFailures.textContent = t('failureSummary', {
+    count: failed.length,
+    files: failed.slice(0, 3).map((item) => item.file).join(', ')
+  });
+}
+
 function statusText(status) {
   if (status === 'done') return t('done');
   if (status === 'error') return t('failed');
@@ -267,11 +381,26 @@ function setProgress(done, total) {
   nodes.progressBar.style.width = `${pct}%`;
 }
 
-function resetRunState() {
+function resetRunState({ keepResult = false } = {}) {
   state.done = 0;
   state.failed = 0;
+  if (!keepResult) state.lastResult = null;
   setProgress(0, state.files.length);
   state.files = state.files.map((file) => ({ ...file, status: null, message: null }));
+}
+
+function setFiles(files, mode, folderPath = null) {
+  state.mode = mode;
+  state.folderPath = folderPath;
+  state.files = files.map((file) => ({
+    path: file.path,
+    name: file.name,
+    relativePath: file.relativePath,
+    size: file.size
+  }));
+  resetRunState();
+  renderFiles();
+  setStatus(state.files.length ? 'addedFiles' : 'noMatchingFiles', { count: state.files.length });
 }
 
 async function loadFolder(folderPath = state.folderPath) {
@@ -281,13 +410,35 @@ async function loadFolder(folderPath = state.folderPath) {
   setStatus('scanning');
   paint();
   try {
-    state.files = await api.scanFolder(folderPath, nodes.formatFilter.value, nodes.recursiveScan.checked);
-    resetRunState();
-    renderFiles();
-    setStatus(state.files.length ? 'addedFiles' : 'noMatchingFiles', { count: state.files.length });
+    const files = await api.scanFolder(folderPath, nodes.formatFilter.value, nodes.recursiveScan.checked);
+    setFiles(files, 'folder', folderPath);
   } catch (err) {
     setStatusText(err.message || t('scanFailed'));
   }
+}
+
+async function applyPreset(key) {
+  const preset = presets[key];
+  if (!preset || state.running) return;
+  state.activePreset = key;
+  nodes.formatFilter.value = preset.formatFilter;
+  nodes.outputFormat.value = preset.outputFormat;
+  nodes.lossless.checked = preset.lossless;
+  nodes.recursiveScan.checked = preset.recursive;
+  setStatus('presetApplied', { name: t(preset.labelKey) });
+  paint();
+  if (state.mode === 'folder' && state.folderPath) {
+    await loadFolder();
+  }
+}
+
+function clearActivePreset() {
+  state.activePreset = null;
+  updatePresetButtons();
+}
+
+function setDragState(active) {
+  nodes.queueArea.classList.toggle('drag-over', active && !state.running);
 }
 
 nodes.languageBtn.addEventListener('click', () => {
@@ -299,16 +450,7 @@ nodes.languageBtn.addEventListener('click', () => {
 nodes.pickImagesBtn.addEventListener('click', async () => {
   const files = await api.pickImages();
   if (!files.length) return;
-  state.mode = 'files';
-  state.folderPath = null;
-  state.files = files.map((file) => ({
-    path: file.path,
-    name: file.name,
-    size: file.size
-  }));
-  resetRunState();
-  renderFiles();
-  setStatus('addedFiles', { count: files.length });
+  setFiles(files, 'files');
 });
 
 nodes.pickFolderBtn.addEventListener('click', async () => {
@@ -336,12 +478,65 @@ nodes.clearBtn.addEventListener('click', () => {
 });
 
 nodes.formatFilter.addEventListener('change', () => {
+  clearActivePreset();
   if (state.mode === 'folder') loadFolder();
 });
 
 nodes.recursiveScan.addEventListener('change', () => {
+  clearActivePreset();
   if (state.mode === 'folder') loadFolder();
 });
+
+[nodes.outputFormat, nodes.lossless, nodes.overwrite].forEach((node) => {
+  node.addEventListener('change', clearActivePreset);
+});
+
+nodes.presetButtons.forEach((button) => {
+  button.addEventListener('click', () => applyPreset(button.dataset.preset));
+});
+
+nodes.openOutputBtn.addEventListener('click', async () => {
+  const result = await api.openPath(state.outputDir);
+  if (!result.ok) setStatusText(result.error || t('openOutputFailed'));
+});
+
+nodes.queueArea.addEventListener('dragenter', (event) => {
+  event.preventDefault();
+  state.dragDepth += 1;
+  setDragState(true);
+});
+
+nodes.queueArea.addEventListener('dragover', (event) => {
+  event.preventDefault();
+  event.dataTransfer.dropEffect = 'copy';
+  setDragState(true);
+});
+
+nodes.queueArea.addEventListener('dragleave', (event) => {
+  event.preventDefault();
+  state.dragDepth = Math.max(0, state.dragDepth - 1);
+  if (state.dragDepth === 0) setDragState(false);
+});
+
+nodes.queueArea.addEventListener('drop', async (event) => {
+  event.preventDefault();
+  state.dragDepth = 0;
+  setDragState(false);
+  if (state.running) return;
+  const paths = Array.from(event.dataTransfer.files).map((file) => file.path).filter(Boolean);
+  if (!paths.length) return;
+  setStatus('resolvingDrop');
+  paint();
+  try {
+    const files = await api.resolveDroppedPaths(paths, nodes.formatFilter.value, nodes.recursiveScan.checked);
+    setFiles(files, 'drop');
+  } catch (err) {
+    setStatusText(err.message || t('scanFailed'));
+  }
+});
+
+document.addEventListener('dragover', (event) => event.preventDefault());
+document.addEventListener('drop', (event) => event.preventDefault());
 
 nodes.convertBtn.addEventListener('click', async () => {
   if (!state.files.length || !state.outputDir) return;
@@ -359,6 +554,7 @@ nodes.convertBtn.addEventListener('click', async () => {
   });
   state.running = false;
   if (result.ok) {
+    state.lastResult = result;
     state.done = result.succeeded;
     state.failed = result.failed;
     setProgress(state.done + state.failed, state.files.length);
