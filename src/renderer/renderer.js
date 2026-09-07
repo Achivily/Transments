@@ -441,6 +441,20 @@ function setDragState(active) {
   nodes.queueArea.classList.toggle('drag-over', active && !state.running);
 }
 
+function isFileDrag(event) {
+  return Array.from(event.dataTransfer?.types || []).includes('Files');
+}
+
+function allowFileDrop(event) {
+  if (!isFileDrag(event)) return false;
+  event.preventDefault();
+  event.stopPropagation();
+  if (event.dataTransfer) {
+    event.dataTransfer.dropEffect = state.running ? 'none' : 'copy';
+  }
+  return true;
+}
+
 nodes.languageBtn.addEventListener('click', () => {
   state.language = state.language === 'en' ? 'zh' : 'en';
   localStorage.setItem(languageKey, state.language);
@@ -500,26 +514,25 @@ nodes.openOutputBtn.addEventListener('click', async () => {
   if (!result.ok) setStatusText(result.error || t('openOutputFailed'));
 });
 
-nodes.queueArea.addEventListener('dragenter', (event) => {
-  event.preventDefault();
+window.addEventListener('dragenter', (event) => {
+  if (!allowFileDrop(event)) return;
   state.dragDepth += 1;
   setDragState(true);
-});
+}, true);
 
-nodes.queueArea.addEventListener('dragover', (event) => {
-  event.preventDefault();
-  event.dataTransfer.dropEffect = 'copy';
+window.addEventListener('dragover', (event) => {
+  if (!allowFileDrop(event)) return;
   setDragState(true);
-});
+}, true);
 
-nodes.queueArea.addEventListener('dragleave', (event) => {
-  event.preventDefault();
+window.addEventListener('dragleave', (event) => {
+  if (!allowFileDrop(event)) return;
   state.dragDepth = Math.max(0, state.dragDepth - 1);
   if (state.dragDepth === 0) setDragState(false);
-});
+}, true);
 
-nodes.queueArea.addEventListener('drop', async (event) => {
-  event.preventDefault();
+window.addEventListener('drop', async (event) => {
+  if (!allowFileDrop(event)) return;
   state.dragDepth = 0;
   setDragState(false);
   if (state.running) return;
@@ -533,10 +546,7 @@ nodes.queueArea.addEventListener('drop', async (event) => {
   } catch (err) {
     setStatusText(err.message || t('scanFailed'));
   }
-});
-
-document.addEventListener('dragover', (event) => event.preventDefault());
-document.addEventListener('drop', (event) => event.preventDefault());
+}, true);
 
 nodes.convertBtn.addEventListener('click', async () => {
   if (!state.files.length || !state.outputDir) return;
