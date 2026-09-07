@@ -441,12 +441,7 @@ function setDragState(active) {
   nodes.queueArea.classList.toggle('drag-over', active && !state.running);
 }
 
-function isFileDrag(event) {
-  return Array.from(event.dataTransfer?.types || []).includes('Files');
-}
-
-function allowFileDrop(event) {
-  if (!isFileDrag(event)) return false;
+function allowDrop(event) {
   event.preventDefault();
   event.stopPropagation();
   if (event.dataTransfer) {
@@ -515,24 +510,24 @@ nodes.openOutputBtn.addEventListener('click', async () => {
 });
 
 window.addEventListener('dragenter', (event) => {
-  if (!allowFileDrop(event)) return;
+  allowDrop(event);
   state.dragDepth += 1;
   setDragState(true);
 }, true);
 
 window.addEventListener('dragover', (event) => {
-  if (!allowFileDrop(event)) return;
+  allowDrop(event);
   setDragState(true);
 }, true);
 
 window.addEventListener('dragleave', (event) => {
-  if (!allowFileDrop(event)) return;
+  allowDrop(event);
   state.dragDepth = Math.max(0, state.dragDepth - 1);
   if (state.dragDepth === 0) setDragState(false);
 }, true);
 
 window.addEventListener('drop', async (event) => {
-  if (!allowFileDrop(event)) return;
+  allowDrop(event);
   state.dragDepth = 0;
   setDragState(false);
   if (state.running) return;
