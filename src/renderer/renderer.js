@@ -523,12 +523,12 @@ nodes.queueArea.addEventListener('drop', async (event) => {
   state.dragDepth = 0;
   setDragState(false);
   if (state.running) return;
-  const paths = Array.from(event.dataTransfer.files).map((file) => file.path).filter(Boolean);
-  if (!paths.length) return;
+  const droppedFiles = event.dataTransfer.files;
+  if (!droppedFiles.length) return;
   setStatus('resolvingDrop');
   paint();
   try {
-    const files = await api.resolveDroppedPaths(paths, nodes.formatFilter.value, nodes.recursiveScan.checked);
+    const files = await api.resolveDroppedFiles(droppedFiles, nodes.formatFilter.value, nodes.recursiveScan.checked);
     setFiles(files, 'drop');
   } catch (err) {
     setStatusText(err.message || t('scanFailed'));

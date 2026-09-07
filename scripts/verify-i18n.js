@@ -30,6 +30,7 @@ async function verifyI18n() {
   assertEqual(first.result, 'Conversion Results', 'initial English result label');
   assertEqual(first.drop, 'Drop images or folders', 'initial English drop label');
   assertEqual(first.languageButton, '中文', 'initial language button target');
+  assertEqual(first.dropApi, 'function', 'drop file resolver API');
 
   await window.webContents.executeJavaScript('document.getElementById("languageBtn").click()');
   const second = await snapshot(window);
@@ -58,7 +59,8 @@ function snapshot(window) {
     preset: document.querySelector('[data-i18n="presetTitle"]').textContent,
     result: document.querySelector('[data-i18n="resultTitle"]').textContent,
     drop: document.querySelector('[data-i18n="dropTitle"]').textContent,
-    languageButton: document.getElementById('languageLabel').textContent
+    languageButton: document.getElementById('languageLabel').textContent,
+    dropApi: typeof window.transments.resolveDroppedFiles
   })`);
 }
 
