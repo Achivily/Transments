@@ -1,0 +1,48 @@
+[package]
+name = "transments"
+version = "2.0.0"
+description = "Lightweight image and video format converter with batch folder conversion"
+authors = ["Achivily"]
+edition = "2021"
+rust-version = "1.80"
+default-run = "transments"
+
+[lib]
+name = "transments_core"
+path = "src/core/mod.rs"
+
+[[bin]]
+name = "transments"
+path = "src/main.rs"
+
+[features]
+default = ["custom-protocol", "heif"]
+# Embeds the ui/ folder into the executable (production build).
+custom-protocol = ["tauri/custom-protocol"]
+# HEIC / AVIF through a statically linked libheif (vcpkg, x64-windows-static-md).
+heif = ["dep:libheif-rs"]
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "bmp", "tiff", "webp"] }
+jpeg-encoder = "0.7"
+tiff = "0.11"
+webp = { version = "0.3", default-features = false }
+libheif-rs = { version = "3", optional = true }
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = 3
+strip = true
+panic = "abort"
+
+# Image codecs are unbearably slow unoptimized; keep tests usable.
+[profile.dev.package."*"]
+opt-level = 2

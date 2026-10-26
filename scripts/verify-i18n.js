@@ -1,76 +1,32 @@
 'use strict';
 
-const { app, BrowserWindow } = require('electron');
+// Checks that every translation key the UI uses exists in both languages and that both languages define the same keys.
+//   node scripts/verify-i18n.js
+const fs = require('fs');
 const path = require('path');
+const vm = require('vm');
 
-const projectRoot = path.join(__dirname, '..');
+const ui = path.join(__dirname, '..', 'ui');
+const sandbox = { window: {} };
+vm.runInNewContext(fs.readFileSync(path.join(ui, 'i18n.js'), 'utf8'), sandbox);
+const { en, zh } = sandbox.window.I18N;
 
-async function verifyI18n() {
-  const window = new BrowserWindow({
-    width: 1000,
-    height: 700,
-    show: false,
-    webPreferences: {
-      preload: path.join(projectRoot, 'src', 'preload', 'index.js'),
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: false
-    }
-  });
+const html = fs.readFileSync(path.join(ui, 'index.html'), 'utf8');
+const js = fs.readFileSync(path.join(ui, 'app.js'), 'utf8');
+const used = new Set();
+for (const m of html.matchAll(/data-i18n(?:-title)?="(\w+)"/g)) used.add(m[1]);
+for (const m of js.matchAll(/\b(?:t\(|setStatus\(|[A-Za-z]*[kK]ey:\s*)'(\w+)'/g)) used.add(m[1]);
 
-  await window.loadFile(path.join(projectRoot, 'src', 'renderer', 'index.html'), {
-    query: { lang: 'en' }
-  });
-
-  const first = await snapshot(window);
-  assertEqual(first.lang, 'en', 'initial document language');
-  assertEqual(first.heading, 'Batch Conversion', 'initial English heading');
-  assertEqual(first.source, 'Source', 'initial English source label');
-  assertEqual(first.preset, 'Presets', 'initial English preset label');
-  assertEqual(first.result, 'Conversion Results', 'initial English result label');
-  assertEqual(first.drop, 'Drop images or folders', 'initial English drop label');
-  assertEqual(first.languageButton, '中文', 'initial language button target');
-  assertEqual(first.dropApi, 'function', 'drop file resolver API');
-
-  await window.webContents.executeJavaScript('document.getElementById("languageBtn").click()');
-  const second = await snapshot(window);
-  assertEqual(second.lang, 'zh-CN', 'switched document language');
-  assertEqual(second.heading, '批量转换', 'switched Chinese heading');
-  assertEqual(second.source, '来源', 'switched Chinese source label');
-  assertEqual(second.preset, '转换预设', 'switched Chinese preset label');
-  assertEqual(second.result, '转换结果', 'switched Chinese result label');
-  assertEqual(second.drop, '拖入图片或文件夹', 'switched Chinese drop label');
-  assertEqual(second.languageButton, 'English', 'switched language button target');
-
-  await window.webContents.executeJavaScript('document.getElementById("languageBtn").click()');
-  const third = await snapshot(window);
-  assertEqual(third.lang, 'en', 'switched back document language');
-  assertEqual(third.heading, 'Batch Conversion', 'switched back English heading');
-
-  window.destroy();
-  app.quit();
+const problems = [];
+for (const key of used) {
+  if (!(key in en)) problems.push(`missing in en: ${key}`);
+  if (!(key in zh)) problems.push(`missing in zh: ${key}`);
 }
+for (const key of Object.keys(en)) if (!(key in zh)) problems.push(`only in en: ${key}`);
+for (const key of Object.keys(zh)) if (!(key in en)) problems.push(`only in zh: ${key}`);
 
-function snapshot(window) {
-  return window.webContents.executeJavaScript(`({
-    lang: document.documentElement.lang,
-    heading: document.querySelector('[data-i18n="batchConversion"]').textContent,
-    source: document.querySelector('[data-i18n="sourceTitle"]').textContent,
-    preset: document.querySelector('[data-i18n="presetTitle"]').textContent,
-    result: document.querySelector('[data-i18n="resultTitle"]').textContent,
-    drop: document.querySelector('[data-i18n="dropTitle"]').textContent,
-    languageButton: document.getElementById('languageLabel').textContent,
-    dropApi: typeof window.transments.resolveDroppedFiles
-  })`);
+if (problems.length) {
+  console.error(problems.join('\n'));
+  process.exit(1);
 }
-
-function assertEqual(actual, expected, label) {
-  if (actual !== expected) {
-    throw new Error(`${label}: expected "${expected}", received "${actual}"`);
-  }
-}
-
-app.whenReady().then(verifyI18n).catch((err) => {
-  console.error(err);
-  app.exit(1);
-});
+console.log(`i18n ok: ${used.size} keys used, ${Object.keys(en).length} defined per language`);
