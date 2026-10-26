@@ -1,178 +1,130 @@
 # Transments
 
-> A lightweight, polished image format converter built with Electron.
+> A lightweight image and video format converter built with Rust, with an Apple-style interface.
 
-Transments is a fast desktop image converter for everyday format migration, folder-based batch work, and clean local image workflows. It uses a lean Electron stack with a Telegram-inspired interface: calm, direct, responsive, bilingual, and polished without getting in the way.
+Transments is a desktop tool for everyday format migration and folder-based batch work. Version 2.0 rewrites the whole project in Rust (Tauri 2): the conversion core is pure Rust, the interface follows macOS design with motion on every interaction, and common video formats can now be converted too.
 
 ## Languages
 
 - English: this file
 - Chinese: [README.zh-CN.md](README.zh-CN.md)
 
-The app supports in-app language switching between English and Chinese from the language/settings button in the top-right toolbar.
+Switch between English and Chinese from the top-right button; the palette button picks an Apple system accent color.
 
 ## Preview
 
-![Transments English UI preview](preview/main.png)
+![Transments image conversion](preview/main.png)
+![Transments video conversion](preview/video.png)
+![Transments video compression](preview/compress.png)
 
-The interface is organized around five practical zones:
+## Features
 
-- Source selection: choose individual images, scan a folder, drag in files or folders, filter by input format, and include subfolders.
-- Output settings and presets: apply conversion presets, choose the target format, prefer lossless encoding, control overwrites, and select an output folder.
-- Batch queue: review files, paths, and per-file conversion status.
-- Results panel: see a completion summary, failed files, and open the output folder immediately.
-- Action bar: track progress, cancel work, and start conversion.
+- **Image, video and compression workspaces**, switched from the title-bar segmented control; each keeps its own queue and settings.
+- **Sources**: pick files, scan a folder, or drop files/folders onto the window; filter by input format and include subfolders (relative structure is kept in the output).
+- **Presets**: images - WebP Archive, JPEG Share, HEIC to PNG, AVIF Batch; videos - MP4 Universal, WebM for Web, Quick Remux (MKV, no re-encode), Animated GIF.
+- **Video options**: three quality levels (High / Balanced / Small) and **Smart Passthrough**, which copies streams the target container already supports instead of re-encoding (MP4 <-> MKV in seconds, no quality loss). Live per-file progress, cancel at any time; partial outputs are removed on cancel.
+- **Video compression to a chosen size** (new): pick a percentage of the original (70/50/30/20%) or an exact size in MB, and H.265 (smaller) or H.264 (compatible). Resolution, frame rate and 10-bit depth are kept; a two-pass encode spends the bitrate where the picture needs it, and if a file overshoots it is re-encoded at a lower rate, so every output ends at or just under the target (typically 96-99% of it). Files already under the target are copied without re-encoding; targets too small to keep the picture usable are refused with the minimum size needed. Presets: Share 10 MB, Email 25 MB, Half Size, Maximum (20%). This is visually lossless at sensible sizes, not mathematically lossless: a fixed size always means lossy encoding.
+- **Results panel** with success/failure counts, failed filenames and an Open Output Folder button.
+- **Apple-style UI**: macOS traffic lights, sliding segmented controls, iOS switches, popup menus, spring motion, drop highlight; 13 Apple system colors x 4 tones; bundled Inter + Noto Sans SC subsets; honors the system reduce-motion setting.
 
-## Highlights
+## Format support
 
-- **Lightweight desktop app**: plain HTML/CSS/JS renderer with no frontend build pipeline.
-- **Bilingual interface**: switch between English and Chinese inside the app.
-- **Drag-and-drop import**: drop image files or folders into the queue area, using the current filter and recursive setting.
-- **Conversion presets**: one-click workflows for WebP archiving, JPEG sharing, HEIC-to-PNG, and AVIF batch conversion.
-- **Post-conversion results**: review success/failure counts, failed filenames, and open the output folder directly.
-- **Batch folder conversion**: scan an entire folder and convert only the source format you need.
-- **Custom output location**: send converted files exactly where you want them.
-- **Recursive scanning**: include subfolders while preserving relative directory structure.
-- **Common format conversion**: PNG, JPEG, WebP, TIFF, AVIF, GIF, and BMP.
-- **HEIC support**: decode HEIC/HEIF input and encode HEIC output through a WASM encoder.
-- **Premium Telegram-style UI**: dark navigation rail, clean workspace, smooth interaction states, and a HarmonyOS Sans SC-first font stack.
-
-## Format Support
+### Images
 
 | Format | Input | Output | Notes |
 | --- | --- | --- | --- |
-| PNG | Yes | Yes | Best for transparent and lossless workflows |
-| JPEG / JPG | Yes | Yes | Encoded with high-quality settings |
-| WebP | Yes | Yes | Supports lossless output |
-| TIFF / TIF | Yes | Yes | Uses LZW compression |
-| AVIF | Yes | Yes | Supports lossless output |
-| GIF | Yes | Yes | Handles common static and animated input scenarios |
-| BMP | Yes | Yes | Uses a built-in BMP writer |
-| HEIC / HEIF | Yes | Yes | HEIC decode plus WASM HEIC encode |
+| PNG | Yes | Yes | Lossless |
+| JPEG / JPG | Yes | Yes | Quality 100, 4:4:4 |
+| WebP | Yes | Yes | Lossless or quality 90; animated GIF/WebP input stays animated |
+| TIFF / TIF | Yes | Yes | LZW compression |
+| AVIF | Yes | Yes | Lossless (pixel-exact) or quality 80, aom encoder |
+| GIF | Yes | Yes | Static output uses the first frame |
+| BMP | Yes | Yes | 24-bit |
+| HEIC / HEIF | Yes | Yes | libde265 decode, x265 encode (quality 90) |
 
-## Tech Stack
+### Videos (requires FFmpeg)
 
-- **Electron**: desktop runtime
-- **Sharp**: high-performance image processing
-- **heic-decode**: HEIC/HEIF input decoding
-- **elheif**: WASM HEIC encoding
-- **Vanilla HTML/CSS/JS**: lean renderer with no extra UI framework
+Input: MP4, M4V, MKV, MOV, WebM, AVI, FLV, WMV, TS / MTS / M2TS, MPG / MPEG, 3GP, OGV, GIF.
 
-## Project Structure
+| Output | Codecs when re-encoding |
+| --- | --- |
+| MP4 / M4V / MOV / MKV / FLV / TS | H.264 + AAC |
+| WebM | VP9 + Opus |
+| AVI | MPEG-4 (XviD) + MP3 |
+| WMV | WMV 8 + WMA |
+| MPEG | MPEG-2 + MP2 |
+| 3GP | H.264 Baseline + AAC |
+| GIF | Palette-optimized animation, no audio |
+| MP3 | Audio only |
+
+### Compression
+
+Input: any video FFmpeg can read. Output: MP4, MKV, or the source container (MP4 / MKV / MOV / M4V, otherwise MP4). Audio is copied when it is AAC/MP3/AC3 at up to 192 kbps and fits the budget, otherwise re-encoded to AAC at 48-128 kbps. Outputs written next to the source are named `<name>_compressed.<ext>`.
+
+FFmpeg lookup order: `TRANSMENTS_FFMPEG_DIR`, `ffmpeg\bin` or `ffmpeg` next to the exe, the exe folder, then `PATH`. Both `ffmpeg.exe` and `ffprobe.exe` are needed. Without them the video and compression pages show a notice; image conversion is unaffected.
+
+## Tech stack
+
+- **Rust + Tauri 2**: desktop shell, UI rendered by the system WebView2 (single exe, about 26 MB)
+- **image / jpeg-encoder / tiff / libwebp**: common image codecs
+- **libheif (static, vcpkg)**: HEIC / AVIF with x265, libde265 and aom
+- **FFmpeg** (external process): video conversion, `ffprobe` for duration and codecs
+- **Vanilla HTML/CSS/JS UI**: no frontend build step
+
+## Project structure
 
 ```text
 Transments
-|-- preview
-|   |-- main.png
-|   `-- main.zh-CN.png
-|-- scripts
-|   |-- capture-preview.js
-|   `-- verify-i18n.js
 |-- src
-|   |-- main
-|   |   |-- index.js
-|   |   `-- converter-service.js
-|   |-- preload
-|   |   `-- index.js
-|   `-- renderer
-|       |-- index.html
-|       |-- renderer.js
-|       `-- styles.css
-|-- test
-|   `-- converter.test.js
-|-- package.json
-|-- README.md
-`-- README.zh-CN.md
+|   |-- main.rs              Tauri shell: commands, dialogs, progress events, drag and drop
+|   `-- core                 Conversion core (no UI dependency, testable on its own)
+|       |-- mod.rs           Job runner, cancellation, output paths
+|       |-- scan.rs          Scanning, filters, dropped-path resolution, natural sort
+|       |-- image_conv.rs    Image conversion
+|       |-- heif.rs          HEIC / AVIF
+|       |-- bmp.rs           BMP writer
+|       |-- compress.rs      Target-size compression (bitrate budget, two-pass, size check)
+|       |-- ffmpeg.rs        Locating / probing ffmpeg
+|       `-- video_conv.rs    Video arguments and progress
+|-- ui                       index.html, styles.css, app.js, i18n.js, fonts/
+|-- tests/converter.rs       Integration tests
+|-- scripts                  build.ps1, capture-preview.ps1, grab_window.ps1, verify-i18n.js, make_icon.py
+|-- icons, capabilities, tauri.conf.json, Cargo.toml
 ```
 
-## Getting Started
+## Building
 
-Install dependencies:
+1. Install Rust (MSVC toolchain) and the Visual Studio 2022 C++ build tools.
+2. Install libheif with vcpkg (about 15 minutes the first time):
+
+   ```bash
+   vcpkg install "libheif[core,hevc,libde265,aom]:x64-windows-static-md"
+   ```
+
+3. Point `VCPKG_ROOT` at your vcpkg checkout (`scripts/build.ps1` defaults to `E:\vcpkg`), then:
+
+   ```bash
+   powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build.ps1 -Test
+   ```
+
+   Output: `dist/Transments-2.0.0-x64.exe`. Without HEIC/AVIF you can skip vcpkg: `cargo build --release --no-default-features --features custom-protocol`.
+
+Other commands:
 
 ```bash
-npm install
+cargo test
 ```
-
-Start the app:
 
 ```bash
-npm start
+node scripts/verify-i18n.js
 ```
-
-Run tests:
 
 ```bash
-npm test
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/capture-preview.ps1
 ```
 
-Verify in-app language switching:
+Debug flags: `--lang zh|en`, `--mode image|video|compress`, `--demo` (sample queue for screenshots), `--probe <file>` (measures transition frame rate), `--selftest <dir> --probe <file>` (clicks through the real UI and converts `<dir>\images` and `<dir>\videos`).
 
-```bash
-npm run verify:i18n
-```
+## License notes
 
-Regenerate preview screenshots:
-
-```bash
-npm run capture:preview:all
-```
-
-Generate only the English preview:
-
-```bash
-npm run capture:preview:en
-```
-
-Generate only the Chinese preview:
-
-```bash
-npm run capture:preview:zh
-```
-
-## Usage
-
-1. Click **Choose Images** to add individual files, or click **Choose Folder** to scan a directory.
-2. Drag images or folders into the queue area when you want a faster import path.
-3. Use **Scan Filter** to target a specific source format, such as PNG or HEIC.
-4. Apply a preset, or manually choose a target format in the **Output** section.
-5. Enable **Include Subfolders** when you want recursive folder processing.
-6. Click **Choose Output Folder** to select where converted files should be written.
-7. Click **Start Conversion** and watch progress in the queue.
-8. Review the **Conversion Results** panel, then open the output folder directly if needed.
-9. Use the language/settings button in the top-right toolbar to switch between English and Chinese.
-
-## Design Notes
-
-Transments is designed as a practical productivity tool, not a landing page. The visual system takes cues from Telegram desktop:
-
-- A dark left rail keeps source and output controls grouped together.
-- A bright workspace keeps the queue readable and scannable.
-- Buttons, selects, checkboxes, queue rows, and status elements use smooth hover, active, and focus transitions.
-- Preset cards keep frequent workflows visible without forcing extra dialogs.
-- Drag-and-drop feedback appears directly over the queue, where the imported files will land.
-- Button hover states include subtle scale and shadow changes for a premium tactile feel.
-- The font stack prefers `HarmonyOS Sans SC`, with strong weights throughout for crisp desktop readability in both languages.
-
-## Development Notes
-
-Conversion logic lives in `src/main/converter-service.js`:
-
-- `scanFolder()` scans directories by source format.
-- `resolvePaths()` turns dropped files and folders into a deduplicated conversion queue.
-- `start()` schedules batch conversion work.
-- `convertOne()` handles one file at a time.
-- HEIC input is decoded into RGBA with `heic-decode`.
-- HEIC output is produced through the `elheif` WASM encoder.
-
-The renderer communicates with the main process through the preload-exposed `window.transments` API. `contextIsolation` stays enabled, so Node capabilities are not exposed directly to the UI.
-
-## Roadmap
-
-- Add conversion history.
-- Add output filename templates.
-- Add signed installer generation.
-- Add more real-world image fixtures for test coverage.
-
-## License
-
-MIT
+The UI fonts Inter and Noto Sans SC are SIL OFL 1.1; license files are in `ui/fonts/`. HEIC encoding uses x265 (GPL-2.0) and libheif (LGPL-3.0); keep their obligations in mind when distributing binaries.

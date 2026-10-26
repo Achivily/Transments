@@ -1,0 +1,3 @@
+[env]
+# libheif and its codecs are linked statically from vcpkg (see README); VCPKG_ROOT points at the vcpkg checkout.
+VCPKGRS_TRIPLET = "x64-windows-static-md"
