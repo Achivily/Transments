@@ -37,7 +37,7 @@ pub fn extension(path: &Path) -> String {
 pub fn is_supported(kind: MediaKind, ext: &str) -> bool {
     match kind {
         MediaKind::Image => IMAGE_INPUT.contains(&ext),
-        MediaKind::Video => VIDEO_INPUT.contains(&ext),
+        MediaKind::Video | MediaKind::Compress => VIDEO_INPUT.contains(&ext),
     }
 }
 

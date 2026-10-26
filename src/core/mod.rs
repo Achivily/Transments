@@ -1,6 +1,7 @@
 //! Conversion core shared by the desktop app and the tests. No UI dependencies.
 
 pub mod bmp;
+pub mod compress;
 pub mod ffmpeg;
 #[cfg(feature = "heif")]
 pub mod heif;
@@ -21,6 +22,8 @@ pub use scan::FileItem;
 pub enum MediaKind {
     Image,
     Video,
+    /// Target-size video compression; scans the same inputs as `Video`.
+    Compress,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -33,6 +36,8 @@ pub struct FileResult {
     pub output: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub output_size: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -49,6 +54,9 @@ pub struct Progress {
     /// Per-file progress 0..=1 while running (video only).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub percent: Option<f64>,
+    /// Bytes written, once a file is done.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub output_size: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize, Default)]
@@ -134,12 +142,14 @@ impl Service {
                     if self.is_cancelled() && outcome.is_err() {
                         return;
                     }
+                    let output_size = outcome.as_ref().ok().and_then(|out| std::fs::metadata(out).ok()).map(|m| m.len());
                     let res = FileResult {
                         ok: outcome.is_ok(),
                         file: file.name.clone(),
                         path: file.path.clone(),
                         output: outcome.as_ref().ok().cloned(),
                         error: outcome.as_ref().err().cloned(),
+                        output_size,
                     };
                     progress(Progress {
                         index: i,
@@ -149,6 +159,7 @@ impl Service {
                         status: if res.ok { "done" } else { "error" },
                         message: res.error.clone(),
                         percent: None,
+                        output_size,
                     });
                     results.lock().unwrap().push(res);
                 });

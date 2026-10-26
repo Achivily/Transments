@@ -225,3 +225,95 @@ fn video_cancel_removes_partial_output() {
     assert!(!root.join("out").join("long.webm").exists());
     let _ = std::fs::remove_dir_all(&root);
 }
+
+fn ffprobe_field(tools: &ffmpeg::Tools, file: &Path, entry: &str) -> String {
+    let out = ffmpeg::command(&tools.ffprobe)
+        .args(["-v", "error", "-select_streams", "v:0", "-show_entries", entry, "-of", "default=nw=1:nk=1"])
+        .arg(file)
+        .output()
+        .unwrap();
+    String::from_utf8_lossy(&out.stdout).replace('\r', "").trim().to_string()
+}
+
+#[test]
+fn compress_hits_target_size_and_keeps_picture_format() {
+    use transments_core::compress::{self, Codec, CompressJob, Target, MIB};
+    let Some(tools) = ffmpeg::locate() else { return };
+    let root = temp_root("compress");
+    let dir = root.join("源 视频");
+    std::fs::create_dir_all(&dir).unwrap();
+    // High-bitrate 10-bit 721x405 source with stereo audio (odd width on purpose).
+    let src = dir.join("clip.mov");
+    let status = ffmpeg::command(&tools.ffmpeg)
+        .args(["-v", "error", "-f", "lavfi", "-i", "testsrc2=size=722x406:rate=30:duration=8", "-f", "lavfi", "-i", "sine=frequency=330:duration=8"])
+        .args(["-c:v", "libx264", "-preset", "ultrafast", "-qp", "4", "-pix_fmt", "yuv420p10le", "-c:a", "aac", "-b:a", "160k", "-shortest", "-y"])
+        .arg(&src)
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let src_size = std::fs::metadata(&src).unwrap().len();
+    assert!(src_size > 6 << 20, "source should be big: {src_size}");
+    let files = scan_folder(MediaKind::Compress, &dir, None, false).unwrap();
+    let service = Service::default();
+
+    for (codec, target, container, want_ext) in [
+        (Codec::Hevc, Target::Megabytes(2.0), "mp4", "mp4"),
+        (Codec::H264, Target::Ratio(0.25), "keep", "mov"),
+        (Codec::Hevc, Target::Megabytes(1.5), "mkv", "mkv"),
+    ] {
+        let out_dir = root.join(format!("out-{codec:?}-{want_ext}"));
+        let job = CompressJob {
+            files: files.clone(),
+            output_dir: out_dir.to_string_lossy().into(),
+            target,
+            codec,
+            container: container.into(),
+            overwrite: false,
+        };
+        let summary = compress::run(&service, Some(&tools), &job, |_| {});
+        assert_eq!(summary.succeeded, 1, "{codec:?} {target:?}: {:?}", summary.results);
+        let out = out_dir.join(format!("clip.{want_ext}"));
+        let size = std::fs::metadata(&out).unwrap().len();
+        let limit = compress::target_bytes(target, src_size).unwrap();
+        assert!(size <= limit, "{codec:?}: {size} > {limit}");
+        assert!(size as f64 > limit as f64 * 0.7, "{codec:?}: budget badly underused, {size} of {limit}");
+        assert_eq!(summary.results[0].output_size, Some(size));
+        // Resolution (rounded to even) and frame rate are untouched.
+        assert_eq!(ffprobe_field(&tools, &out, "stream=width,height"), "722\n406");
+        assert_eq!(ffprobe_field(&tools, &out, "stream=r_frame_rate"), "30/1");
+        let pix = ffprobe_field(&tools, &out, "stream=pix_fmt");
+        if codec == Codec::Hevc {
+            assert_eq!(pix, "yuv420p10le", "10-bit kept");
+        }
+        let info = ffmpeg::probe(&tools, &out).unwrap();
+        assert!(info.audio.is_some());
+        assert!((info.duration - 8.0).abs() < 0.2, "{}", info.duration);
+        eprintln!("{codec:?} {target:?}: {:.2} MB of {:.2} MB", size as f64 / MIB, limit as f64 / MIB);
+    }
+
+    // Output next to the source never overwrites it.
+    let job = CompressJob {
+        files: files.clone(),
+        output_dir: dir.to_string_lossy().into(),
+        target: Target::Ratio(0.5),
+        codec: Codec::H264,
+        container: "keep".into(),
+        overwrite: false,
+    };
+    assert_eq!(compress::run(&service, Some(&tools), &job, |_| {}).succeeded, 1);
+    assert!(dir.join("clip_compressed.mov").exists());
+    assert_eq!(std::fs::metadata(&src).unwrap().len(), src_size);
+
+    // Already under the target: streams are copied, not re-encoded.
+    let job = CompressJob { target: Target::Megabytes(500.0), output_dir: root.join("copy").to_string_lossy().into(), ..job };
+    let summary = compress::run(&service, Some(&tools), &job, |_| {});
+    assert_eq!(summary.succeeded, 1);
+    assert_eq!(ffprobe_field(&tools, &root.join("copy").join("clip.mov"), "stream=codec_name"), "h264");
+
+    // Impossible target is refused with a useful message.
+    let job = CompressJob { target: Target::Megabytes(0.01), output_dir: root.join("tiny").to_string_lossy().into(), ..job };
+    let summary = compress::run(&service, Some(&tools), &job, |_| {});
+    assert_eq!(summary.failed, 1);
+    assert!(summary.results[0].error.as_deref().unwrap().contains("needs at least"));
+    let _ = std::fs::remove_dir_all(&root);
+}

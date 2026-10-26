@@ -6,6 +6,7 @@ use std::sync::Mutex;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, State};
 use tauri_plugin_dialog::DialogExt;
+use transments_core::compress::{self, CompressJob};
 use transments_core::ffmpeg::{self, Tools};
 use transments_core::image_conv::{self, ImageJob};
 use transments_core::scan::{self, FileItem, IMAGE_INPUT, VIDEO_INPUT};
@@ -16,6 +17,7 @@ use transments_core::{MediaKind, Progress, Service, Summary};
 struct AppState {
     image: Service,
     video: Service,
+    compress: Service,
     /// `None` until the first lookup; the inner option is the lookup result.
     tools: Mutex<Option<Option<Tools>>>,
 }
@@ -25,6 +27,7 @@ impl AppState {
         match kind {
             MediaKind::Image => &self.image,
             MediaKind::Video => &self.video,
+            MediaKind::Compress => &self.compress,
         }
     }
 
@@ -117,7 +120,7 @@ async fn pick_files(app: AppHandle, kind: MediaKind) -> Vec<FileItem> {
     let Some(window) = app.get_webview_window("main") else { return Vec::new() };
     let (label, exts) = match kind {
         MediaKind::Image => ("Images", IMAGE_INPUT),
-        MediaKind::Video => ("Videos", VIDEO_INPUT),
+        MediaKind::Video | MediaKind::Compress => ("Videos", VIDEO_INPUT),
     };
     let picked = app
         .dialog()
@@ -173,6 +176,17 @@ async fn start_video(app: AppHandle, job: VideoJob) -> Summary {
     tauri::async_runtime::spawn_blocking(move || {
         let state = handle.state::<AppState>();
         video_conv::run(&state.video, state.tools(false).as_ref(), &job, emitter(&handle, MediaKind::Video))
+    })
+    .await
+    .unwrap_or_else(|e| Summary::error(e.to_string()))
+}
+
+#[tauri::command]
+async fn start_compress(app: AppHandle, job: CompressJob) -> Summary {
+    let handle = app.clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        let state = handle.state::<AppState>();
+        compress::run(&state.compress, state.tools(false).as_ref(), &job, emitter(&handle, MediaKind::Compress))
     })
     .await
     .unwrap_or_else(|e| Summary::error(e.to_string()))
@@ -242,6 +256,7 @@ fn main() {
             resolve_paths,
             start_image,
             start_video,
+            start_compress,
             cancel_conversion,
             ffmpeg_status,
             open_path

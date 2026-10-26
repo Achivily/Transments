@@ -120,8 +120,32 @@ const PAGES = {
       mkvRemux: { labelKey: 'presetMkv', metaKey: 'presetMkvMeta', formatFilter: 'auto', outputFormat: 'mkv', quality: 'high', smartCopy: true },
       gifClip: { labelKey: 'presetGif', metaKey: 'presetGifMeta', formatFilter: 'auto', outputFormat: 'gif', quality: 'balanced', smartCopy: false }
     }
+  },
+  compress: {
+    icon: '#i-compress',
+    headingKey: 'compressConversion',
+    pickKey: 'chooseCompress',
+    emptyTitleKey: 'emptyCompressTitle',
+    emptyHintKey: 'compressFormatList',
+    dropKey: 'dropVideoTitle',
+    filters: VIDEO_FILTERS,
+    formats: [
+      { value: 'mp4', key: 'containerMp4', hintKey: 'containerMp4Hint' },
+      { value: 'mkv', key: 'containerMkv', hintKey: 'containerMkvHint' },
+      { value: 'keep', key: 'containerKeep', hintKey: 'containerKeepHint' }
+    ],
+    defaultFormat: 'mp4',
+    presets: {
+      share10: { labelKey: 'presetShare10', metaKey: 'presetShare10Meta', target: { kind: 'megabytes', value: 10 }, codec: 'hevc', outputFormat: 'mp4' },
+      mail25: { labelKey: 'presetMail25', metaKey: 'presetMail25Meta', target: { kind: 'megabytes', value: 25 }, codec: 'h264', outputFormat: 'mp4' },
+      half: { labelKey: 'presetHalf', metaKey: 'presetHalfMeta', target: { kind: 'ratio', value: 0.5 }, codec: 'hevc', outputFormat: 'keep' },
+      tiny: { labelKey: 'presetTiny', metaKey: 'presetTinyMeta', target: { kind: 'ratio', value: 0.2 }, codec: 'hevc', outputFormat: 'mp4' }
+    }
   }
 };
+
+const MIB = 1024 * 1024;
+const needsFfmpeg = (kind) => kind === 'video' || kind === 'compress';
 
 const app = {
   language: 'en',
@@ -367,9 +391,13 @@ class Workspace {
     this.rows = new Map();
 
     const isVideo = kind === 'video';
+    const isCompress = kind === 'compress';
     this.n.qualityRow.hidden = !isVideo;
     this.n.smartCopyRow.hidden = !isVideo;
-    this.n.losslessRow.hidden = isVideo;
+    this.n.losslessRow.hidden = kind !== 'image';
+    this.n.targetRow.hidden = !isCompress;
+    this.n.codecRow.hidden = !isCompress;
+    this.n.compressNote.hidden = !isCompress;
     this.n.emptyIcon.querySelector('use').setAttribute('href', this.config.icon);
 
     this.filter = new Popup(this.n.formatFilter, this.config.filters, () => {
@@ -383,6 +411,12 @@ class Workspace {
     this.format.set(this.config.defaultFormat);
     this.quality = new Segmented(this.n.quality, () => this.clearPreset());
     this.quality.set('balanced', false);
+    this.targetMode = new Segmented(this.n.targetMode, () => this.onTargetChange());
+    this.targetMode.set('ratio', false);
+    this.ratio = new Segmented(this.n.ratio, () => this.onTargetChange());
+    this.ratio.set('0.5', false);
+    this.codec = new Segmented(this.n.codec, () => this.clearPreset());
+    this.codec.set('hevc', false);
 
     this.buildPresets();
     this.bind();
@@ -440,6 +474,51 @@ class Workspace {
       this.setStatus('cancelling');
     });
     n.ffmpegRecheck.addEventListener('click', () => refreshFfmpeg(true));
+    n.sizeInput.addEventListener('input', () => this.onTargetChange());
+    n.sizeChips.querySelectorAll('.chip').forEach((chip) => chip.addEventListener('click', () => {
+      n.sizeInput.value = chip.dataset.value;
+      this.onTargetChange();
+    }));
+  }
+
+  /* --- compression target --- */
+
+  target() {
+    if (this.targetMode.value === 'size') return { kind: 'megabytes', value: Number(this.n.sizeInput.value) };
+    return { kind: 'ratio', value: Number(this.ratio.value) };
+  }
+
+  setTarget({ kind, value }) {
+    this.targetMode.set(kind === 'megabytes' ? 'size' : 'ratio');
+    if (kind === 'megabytes') this.n.sizeInput.value = String(value);
+    else this.ratio.set(String(value));
+    this.syncTargetControls();
+  }
+
+  targetBytes(file) {
+    const target = this.target();
+    return target.kind === 'ratio' ? file.size * target.value : target.value * MIB;
+  }
+
+  targetValid() {
+    const { kind, value } = this.target();
+    return Number.isFinite(value) && value > 0 && (kind === 'megabytes' || value < 1);
+  }
+
+  syncTargetControls() {
+    const bySize = this.targetMode.value === 'size';
+    this.n.ratio.hidden = bySize;
+    this.n.sizeField.hidden = !bySize;
+    if (!bySize) this.ratio.place(false);
+    this.n.sizeChips.querySelectorAll('.chip').forEach((chip) => {
+      chip.classList.toggle('on', Number(chip.dataset.value) === Number(this.n.sizeInput.value));
+    });
+  }
+
+  onTargetChange() {
+    this.syncTargetControls();
+    this.clearPreset();
+    this.state.files.forEach((file) => this.updateRow(file));
   }
 
   /* --- language & paint --- */
@@ -459,6 +538,7 @@ class Workspace {
     this.filter.render();
     this.format.render();
     this.quality.place(false);
+    [this.targetMode, this.ratio, this.codec].forEach((seg) => seg.place(false));
     this.rows.forEach((row, path) => this.updateRow(this.state.files.find((f) => f.path === path), row));
     this.paint();
     this.repaintStatus();
@@ -478,7 +558,8 @@ class Workspace {
     n.outputDir.title = s.outputDir || '';
     n.sourcePath.textContent = this.sourceLabel();
     n.emptyState.hidden = count > 0;
-    const blocked = this.kind === 'video' && app.ffmpeg && !app.ffmpeg.found;
+    const blocked = (needsFfmpeg(this.kind) && app.ffmpeg && !app.ffmpeg.found)
+      || (this.kind === 'compress' && !this.targetValid());
     n.convert.disabled = s.running || !count || !s.outputDir || blocked;
     n.cancel.disabled = !s.running;
     n.clear.disabled = s.running || !count;
@@ -541,11 +622,11 @@ class Workspace {
       const text = el('div', 'file-text');
       text.append(
         el('div', 'file-name', file.name),
-        el('div', 'file-meta', [fileSize(file.size), file.relativePath || file.path].filter(Boolean).join(' · '))
+        el('div', 'file-meta')
       );
       const status = el('div', 'row-status');
       status.append(el('span', 'status-pill'));
-      if (this.kind === 'video') {
+      if (needsFfmpeg(this.kind)) {
         const bar = el('div', 'row-progress');
         bar.append(el('div'));
         bar.hidden = true;
@@ -561,7 +642,23 @@ class Workspace {
     this.paint();
   }
 
+  metaText(file) {
+    const where = file.relativePath || file.path;
+    if (this.kind !== 'compress') return [fileSize(file.size), where].filter(Boolean).join(' · ');
+    if (file.status === 'done' && file.outputSize != null) {
+      return `${fileSize(file.size)} → ${fileSize(file.outputSize)} · ${where}`;
+    }
+    if (!this.targetValid()) return `${fileSize(file.size)} · ${where}`;
+    const goal = this.targetBytes(file);
+    const plan = file.size <= goal ? t('alreadySmall') : t('targetUpTo', { size: fileSize(goal) });
+    return `${fileSize(file.size)} → ${plan} · ${where}`;
+  }
+
   statusLabel(file) {
+    if (file.status === 'done' && this.kind === 'compress' && file.outputSize != null && file.size > 0) {
+      const percent = Math.round((1 - file.outputSize / file.size) * 100);
+      if (percent > 0) return t('savedPercent', { percent });
+    }
     if (file.status === 'done') return t('done');
     if (file.status === 'error') return t('failed');
     if (file.status === 'running') {
@@ -581,6 +678,7 @@ class Workspace {
     pill.textContent = this.statusLabel(file);
     pill.title = file.message || '';
     if (previous !== status && status) restartAnimation(pill, 'swap');
+    row.querySelector('.file-meta').textContent = this.metaText(file);
     const bar = row.querySelector('.row-progress');
     if (bar) {
       bar.hidden = status !== 'running';
@@ -606,6 +704,14 @@ class Workspace {
     n.resultIcon.querySelector('use').setAttribute('href', failed.length || result.cancelled ? '#i-warn' : '#i-check');
     n.resultSummary.textContent = t('resultSummary', { succeeded: result.succeeded, failed: result.failed });
     n.resultOutput.textContent = t('resultOutput', { path: shortPath(this.state.outputDir) });
+    if (this.kind === 'compress') {
+      const done = (result.results || []).filter((item) => item.ok && item.outputSize != null);
+      const before = done.reduce((sum, item) => sum + (this.state.files.find((f) => f.path === item.path)?.size || 0), 0);
+      const after = done.reduce((sum, item) => sum + item.outputSize, 0);
+      if (before > after) {
+        n.resultSummary.textContent += ` · ${t('compressSaved', { saved: fileSize(before - after), percent: Math.round((1 - after / before) * 100) })}`;
+      }
+    }
     n.resultFailures.classList.toggle('has', failed.length > 0);
     n.resultFailures.textContent = failed.length
       ? t('failureSummary', { count: failed.length, files: failed.slice(0, 3).map((item) => item.file).join(', ') })
@@ -617,7 +723,7 @@ class Workspace {
     this.state.failed = 0;
     if (!keepResult) this.state.lastResult = null;
     this.setProgress(0);
-    this.state.files = this.state.files.map((file) => ({ ...file, status: null, message: null, percent: null }));
+    this.state.files = this.state.files.map((file) => ({ ...file, status: null, message: null, percent: null, outputSize: null }));
   }
 
   setFiles(files, mode, folderPath = null) {
@@ -677,13 +783,16 @@ class Workspace {
     const preset = this.config.presets[key];
     if (!preset || this.state.running) return;
     this.state.activePreset = key;
-    this.filter.set(preset.formatFilter);
+    if ('formatFilter' in preset) this.filter.set(preset.formatFilter);
     this.format.set(preset.outputFormat);
+    if ('target' in preset) this.setTarget(preset.target);
+    if ('codec' in preset) this.codec.set(preset.codec);
     if ('lossless' in preset) this.n.lossless.checked = preset.lossless;
     if ('recursive' in preset) this.n.recursive.checked = preset.recursive;
     if ('quality' in preset) this.quality.set(preset.quality);
     if ('smartCopy' in preset) this.n.smartCopy.checked = preset.smartCopy;
     this.setStatus('presetApplied', { name: t(preset.labelKey) });
+    this.state.files.forEach((file) => this.updateRow(file));
     this.paint();
     if (this.state.mode === 'folder' && this.state.folderPath) await this.loadFolder();
   }
@@ -707,9 +816,14 @@ class Workspace {
     const base = { files, outputFormat: this.format.value, outputDir: s.outputDir, overwrite: this.n.overwrite.checked };
     let result;
     try {
-      result = this.kind === 'video'
-        ? await invoke('start_video', { job: { ...base, quality: this.quality.value, smartCopy: this.n.smartCopy.checked } })
-        : await invoke('start_image', { job: { ...base, lossless: this.n.lossless.checked } });
+      if (this.kind === 'compress') {
+        const { outputFormat: container, ...rest } = base;
+        result = await invoke('start_compress', { job: { ...rest, container, target: this.target(), codec: this.codec.value } });
+      } else if (this.kind === 'video') {
+        result = await invoke('start_video', { job: { ...base, quality: this.quality.value, smartCopy: this.n.smartCopy.checked } });
+      } else {
+        result = await invoke('start_image', { job: { ...base, lossless: this.n.lossless.checked } });
+      }
     } catch (err) {
       result = { ok: false, error: String(err) };
     }
@@ -749,6 +863,7 @@ class Workspace {
     file.status = info.status;
     file.message = info.message;
     file.percent = null;
+    file.outputSize = info.outputSize ?? null;
     s.done += info.status === 'done' ? 1 : 0;
     s.failed += info.status === 'error' ? 1 : 0;
     this.setProgress((s.done + s.failed) / (s.files.length || 1));
@@ -760,20 +875,21 @@ class Workspace {
   /* --- demo data for preview captures --- */
 
   loadDemo() {
-    const sample = this.kind === 'video'
-      ? ['Keynote Highlights.mov', 'Drone over Lake.mp4', 'Interview Raw.mkv', 'Product Teaser.webm', 'Screen Recording 2026-10-20.mp4', 'Old Camcorder Tape.avi']
-      : ['IMG_4120.HEIC', 'IMG_4121.HEIC', 'Mountains at dusk.png', 'Portrait Studio.jpg', 'Banner hero.webp', 'Scan 0042.tiff', 'Logo outline.bmp'];
-    const base = this.kind === 'video' ? 'D:\\Videos\\Projects' : 'D:\\Pictures\\Trip 2026';
-    this.applyPreset(this.kind === 'video' ? 'mp4Universal' : 'webpArchive');
+    const isImage = this.kind === 'image';
+    const sample = isImage
+      ? ['IMG_4120.HEIC', 'IMG_4121.HEIC', 'Mountains at dusk.png', 'Portrait Studio.jpg', 'Banner hero.webp', 'Scan 0042.tiff', 'Logo outline.bmp']
+      : ['Keynote Highlights.mov', 'Drone over Lake.mp4', 'Interview Raw.mkv', 'Product Teaser.webm', 'Screen Recording 2026-10-20.mp4', 'Old Camcorder Tape.avi'];
+    const base = isImage ? 'D:\\Pictures\\Trip 2026' : 'D:\\Videos\\Projects';
+    this.applyPreset({ image: 'webpArchive', video: 'mp4Universal', compress: 'mail25' }[this.kind]);
     this.setFiles(sample.map((name, i) => ({
       name,
       path: `${base}\\${name}`,
       relativePath: i > 3 ? `Archive\\${name}` : name,
-      size: (this.kind === 'video' ? 48_000_000 : 2_400_000) * (1 + (i * 37) % 9)
+      size: (isImage ? 2_400_000 : 48_000_000) * (1 + (i * 37) % 9)
     })), 'folder', base);
-    this.state.outputDir = this.kind === 'video' ? 'D:\\Videos\\Converted' : 'D:\\Pictures\\Converted';
+    this.state.outputDir = isImage ? 'D:\\Pictures\\Converted' : 'D:\\Videos\\Converted';
     this.state.files.forEach((file, i) => {
-      if (i < 2) file.status = 'done';
+      if (i < 2) Object.assign(file, { status: 'done', outputSize: this.kind === 'compress' ? 24.6 * MIB - i * 3e5 : null });
       else if (i === 2) Object.assign(file, { status: 'running', percent: 0.42 });
       this.updateRow(file);
     });
@@ -907,14 +1023,16 @@ async function refreshFfmpeg(refresh = false) {
   app.ffmpeg = await invoke('ffmpeg_status', { refresh });
   renderFfmpeg();
   app.pages.video?.paint();
+  app.pages.compress?.paint();
 }
 
 function renderFfmpeg() {
-  const page = app.pages.video;
-  if (!page || !app.ffmpeg) return;
-  page.n.ffmpegCard.hidden = app.ffmpeg.found;
-  page.n.ffmpegVersion.textContent = app.ffmpeg.found ? t('ffmpegFound', { version: app.ffmpeg.version }) : '';
-  page.n.ffmpegVersion.title = app.ffmpeg.path || '';
+  if (!app.ffmpeg) return;
+  [app.pages.video, app.pages.compress].filter(Boolean).forEach((page) => {
+    page.n.ffmpegCard.hidden = app.ffmpeg.found;
+    page.n.ffmpegVersion.textContent = app.ffmpeg.found ? t('ffmpegFound', { version: app.ffmpeg.version }) : '';
+    page.n.ffmpegVersion.title = app.ffmpeg.path || '';
+  });
 }
 
 const modeSwitch = new Segmented(document.getElementById('modeSwitch'), (mode) => switchMode(mode));
@@ -961,11 +1079,12 @@ async function boot() {
   }
   app.pages.image = new Workspace('image');
   app.pages.video = new Workspace('video');
+  app.pages.compress = new Workspace('compress');
   buildSwatches();
   applyAccent();
   applyLanguage();
   const savedMode = options.mode || (options.demo ? null : safeStorage(() => localStorage.getItem(modeKey), null));
-  switchMode(savedMode === 'video' ? 'video' : 'image', false);
+  switchMode(app.pages[savedMode] ? savedMode : 'image', false);
   variantSwitch.set(app.accent.variant, false);
   refreshFfmpeg();
   if (options.demo) Object.values(app.pages).forEach((page) => page.loadDemo());
@@ -1017,14 +1136,19 @@ async function runSelftest(dir) {
     await pause(300);
     lines.push(`popover hidden after outside click: ${popover.hidden}`);
 
-    for (const [kind, format, extra] of [['image', 'webp', null], ['video', 'webm', 'small']]) {
+    for (const [kind, format, extra] of [['image', 'webp', null], ['video', 'webm', 'small'], ['compress', 'keep', null]]) {
       const page = app.pages[kind];
       document.querySelector(`#modeSwitch .seg[data-value="${kind}"]`).click();
       await pause(600);
       await pickMenu(page.format, format);
       if (extra) page.n.quality.querySelector(`.seg[data-value="${extra}"]`).click();
+      if (kind === 'compress') {
+        page.n.ratio.querySelector('.seg[data-value="0.3"]').click();
+        page.n.codec.querySelector('.seg[data-value="h264"]').click();
+      }
       page.n.overwrite.click();
       await page.dropPaths([`${dir}\\${kind === 'image' ? 'images' : 'videos'}`]);
+      if (kind === 'compress') lines.push(`  meta before: ${[...page.rows.values()].map((row) => row.querySelector('.file-meta').textContent).join(' | ')}`);
       page.state.outputDir = `${dir}\\out-${kind}`;
       page.paint();
       let running = 0;
@@ -1037,6 +1161,10 @@ async function runSelftest(dir) {
       lines.push(`${kind}: ok ${r.ok} succeeded ${r.succeeded} failed ${r.failed}; running events ${running}; result "${page.n.resultSummary.textContent}"; status "${page.n.statusText.textContent}"`);
       (r.results || []).filter((x) => !x.ok).forEach((x) => lines.push(`  failed ${x.file}: ${x.error}`));
       lines.push(`  rows: ${[...page.rows.values()].map((row) => row.querySelector('.status-pill').textContent).join(', ')}`);
+      if (kind === 'compress') {
+        lines.push(`  meta after: ${[...page.rows.values()].map((row) => row.querySelector('.file-meta').textContent).join(' | ')}`);
+        lines.push(`  output line: "${page.n.resultOutput.textContent}"`);
+      }
     }
   } catch (err) {
     lines.push(`ERROR ${err && err.stack || err}`);

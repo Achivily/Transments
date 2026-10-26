@@ -7,3 +7,5 @@ $grab = Join-Path $PSScriptRoot "grab_window.ps1"
 & $grab -Exe $exe -Out (Join-Path $root "preview\main.zh-CN.png") -AppArgs "--demo --lang zh" -Wait 3
 & $grab -Exe $exe -Out (Join-Path $root "preview\video.png") -AppArgs "--demo --lang en --mode video" -Wait 3
 & $grab -Exe $exe -Out (Join-Path $root "preview\video.zh-CN.png") -AppArgs "--demo --lang zh --mode video" -Wait 3
+& $grab -Exe $exe -Out (Join-Path $root "preview\compress.png") -AppArgs "--demo --lang en --mode compress" -Wait 3
+& $grab -Exe $exe -Out (Join-Path $root "preview\compress.zh-CN.png") -AppArgs "--demo --lang zh --mode compress" -Wait 3

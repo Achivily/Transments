@@ -15,13 +15,15 @@ Transments 是一款面向日常格式迁移和文件夹批量处理的桌面工
 
 ![Transments 图片转换](preview/main.zh-CN.png)
 ![Transments 视频转换](preview/video.zh-CN.png)
+![Transments 视频压缩](preview/compress.zh-CN.png)
 
 ## 功能
 
-- **图片 / 视频两个工作区**：标题栏分段控件切换，各自保留队列和设置。
+- **图片 / 视频 / 压缩三个工作区**：标题栏分段控件切换，各自保留队列和设置。
 - **来源**：选择文件、扫描文件夹、把文件或文件夹拖进窗口；按输入格式筛选，可包含子文件夹（输出保留相对目录结构）。
 - **转换预设**：图片：WebP 归档、JPEG 分享、HEIC 转 PNG、AVIF 批量；视频：MP4 通用、WebM 网页、快速封装（MKV 不重新编码）、GIF 动图。
 - **视频选项**：三档画质（高画质 / 均衡 / 小体积）；**智能直通**：目标容器已支持的音视频流直接复制，不重新编码（例如 MP4 ↔ MKV 几秒完成、画质无损）。每个文件实时显示进度，可随时取消，取消时删除未完成的输出文件。
+- **按指定大小压缩视频**（新）：选择原大小的比例（70/50/30/20%）或直接输入目标 MB，编码器可选 H.265（更小）或 H.264（兼容）。分辨率、帧率和 10 位色深保持不变；两遍编码把码率用在最需要的画面上，结果超出时自动降码率重编码，保证每个文件等于或略小于目标（通常为目标的 96–99%）。已经小于目标的文件直接复制不重新编码；目标小到画面无法保证时会拒绝并提示所需的最小大小。预设：分享 10 MB、邮件 25 MB、体积减半、极限压缩（20%）。在合理大小下画面视觉无损；固定体积必然是有损编码，并非数学意义上的无损。
 - **结果面板**：成功 / 失败数量、失败文件名，一键打开输出文件夹。
 - **Apple 风格界面**：macOS 红绿灯、分段控件滑块、iOS 开关、弹出菜单、弹簧动效、拖放高亮；13 种 Apple 系统色 × 4 种色调；内置 Inter + 思源黑体子集字体；遵循系统“减少动画”设置。
 
@@ -55,7 +57,11 @@ Transments 是一款面向日常格式迁移和文件夹批量处理的桌面工
 | GIF | 调色板优化动图，无声音 |
 | MP3 | 仅提取音频 |
 
-FFmpeg 查找顺序：环境变量 `TRANSMENTS_FFMPEG_DIR`、程序目录下的 `ffmpeg\bin` / `ffmpeg`、程序目录、`PATH`。需要同时有 `ffmpeg.exe` 和 `ffprobe.exe`。找不到时视频页会提示，图片转换不受影响。
+### 压缩
+
+输入：FFmpeg 能读取的任意视频。输出：MP4、MKV 或与源相同（MP4 / MKV / MOV / M4V，其他转为 MP4）。音频为 AAC/MP3/AC3 且不超过 192 kbps、预算足够时直接复制，否则重新编码为 48–128 kbps 的 AAC。输出到源文件同一目录时命名为 `<名称>_compressed.<扩展名>`。
+
+FFmpeg 查找顺序：环境变量 `TRANSMENTS_FFMPEG_DIR`、程序目录下的 `ffmpeg\bin` / `ffmpeg`、程序目录、`PATH`。需要同时有 `ffmpeg.exe` 和 `ffprobe.exe`。找不到时视频页和压缩页会提示，图片转换不受影响。
 
 ## 技术栈
 
@@ -77,6 +83,7 @@ Transments
 |       |-- image_conv.rs    图片转换
 |       |-- heif.rs          HEIC / AVIF
 |       |-- bmp.rs           BMP 写入
+|       |-- compress.rs      按目标大小压缩（码率预算、两遍编码、体积校验）
 |       |-- ffmpeg.rs        查找 / 探测 ffmpeg
 |       `-- video_conv.rs    视频转换参数与进度
 |-- ui                       index.html、styles.css、app.js、i18n.js、fonts/
@@ -116,7 +123,7 @@ node scripts/verify-i18n.js
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/capture-preview.ps1
 ```
 
-调试参数：`--lang zh|en`、`--mode image|video`、`--demo`（示例队列，用于截图）、`--probe <文件>`（测量切页帧率）、`--selftest <目录> --probe <文件>`（在真实界面里自动点击并转换 `<目录>\images`、`<目录>\videos`）。
+调试参数：`--lang zh|en`、`--mode image|video|compress`、`--demo`（示例队列，用于截图）、`--probe <文件>`（测量切页帧率）、`--selftest <目录> --probe <文件>`（在真实界面里自动点击并转换 `<目录>\images`、`<目录>\videos`）。
 
 ## 许可
 

@@ -15,13 +15,15 @@ Switch between English and Chinese from the top-right button; the palette button
 
 ![Transments image conversion](preview/main.png)
 ![Transments video conversion](preview/video.png)
+![Transments video compression](preview/compress.png)
 
 ## Features
 
-- **Image and video workspaces**, switched from the title-bar segmented control; each keeps its own queue and settings.
+- **Image, video and compression workspaces**, switched from the title-bar segmented control; each keeps its own queue and settings.
 - **Sources**: pick files, scan a folder, or drop files/folders onto the window; filter by input format and include subfolders (relative structure is kept in the output).
 - **Presets**: images - WebP Archive, JPEG Share, HEIC to PNG, AVIF Batch; videos - MP4 Universal, WebM for Web, Quick Remux (MKV, no re-encode), Animated GIF.
 - **Video options**: three quality levels (High / Balanced / Small) and **Smart Passthrough**, which copies streams the target container already supports instead of re-encoding (MP4 <-> MKV in seconds, no quality loss). Live per-file progress, cancel at any time; partial outputs are removed on cancel.
+- **Video compression to a chosen size** (new): pick a percentage of the original (70/50/30/20%) or an exact size in MB, and H.265 (smaller) or H.264 (compatible). Resolution, frame rate and 10-bit depth are kept; a two-pass encode spends the bitrate where the picture needs it, and if a file overshoots it is re-encoded at a lower rate, so every output ends at or just under the target (typically 96-99% of it). Files already under the target are copied without re-encoding; targets too small to keep the picture usable are refused with the minimum size needed. Presets: Share 10 MB, Email 25 MB, Half Size, Maximum (20%). This is visually lossless at sensible sizes, not mathematically lossless: a fixed size always means lossy encoding.
 - **Results panel** with success/failure counts, failed filenames and an Open Output Folder button.
 - **Apple-style UI**: macOS traffic lights, sliding segmented controls, iOS switches, popup menus, spring motion, drop highlight; 13 Apple system colors x 4 tones; bundled Inter + Noto Sans SC subsets; honors the system reduce-motion setting.
 
@@ -55,7 +57,11 @@ Input: MP4, M4V, MKV, MOV, WebM, AVI, FLV, WMV, TS / MTS / M2TS, MPG / MPEG, 3GP
 | GIF | Palette-optimized animation, no audio |
 | MP3 | Audio only |
 
-FFmpeg lookup order: `TRANSMENTS_FFMPEG_DIR`, `ffmpeg\bin` or `ffmpeg` next to the exe, the exe folder, then `PATH`. Both `ffmpeg.exe` and `ffprobe.exe` are needed. Without them the video page shows a notice; image conversion is unaffected.
+### Compression
+
+Input: any video FFmpeg can read. Output: MP4, MKV, or the source container (MP4 / MKV / MOV / M4V, otherwise MP4). Audio is copied when it is AAC/MP3/AC3 at up to 192 kbps and fits the budget, otherwise re-encoded to AAC at 48-128 kbps. Outputs written next to the source are named `<name>_compressed.<ext>`.
+
+FFmpeg lookup order: `TRANSMENTS_FFMPEG_DIR`, `ffmpeg\bin` or `ffmpeg` next to the exe, the exe folder, then `PATH`. Both `ffmpeg.exe` and `ffprobe.exe` are needed. Without them the video and compression pages show a notice; image conversion is unaffected.
 
 ## Tech stack
 
@@ -77,6 +83,7 @@ Transments
 |       |-- image_conv.rs    Image conversion
 |       |-- heif.rs          HEIC / AVIF
 |       |-- bmp.rs           BMP writer
+|       |-- compress.rs      Target-size compression (bitrate budget, two-pass, size check)
 |       |-- ffmpeg.rs        Locating / probing ffmpeg
 |       `-- video_conv.rs    Video arguments and progress
 |-- ui                       index.html, styles.css, app.js, i18n.js, fonts/
@@ -116,7 +123,7 @@ node scripts/verify-i18n.js
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/capture-preview.ps1
 ```
 
-Debug flags: `--lang zh|en`, `--mode image|video`, `--demo` (sample queue for screenshots), `--probe <file>` (measures transition frame rate), `--selftest <dir> --probe <file>` (clicks through the real UI and converts `<dir>\images` and `<dir>\videos`).
+Debug flags: `--lang zh|en`, `--mode image|video|compress`, `--demo` (sample queue for screenshots), `--probe <file>` (measures transition frame rate), `--selftest <dir> --probe <file>` (clicks through the real UI and converts `<dir>\images` and `<dir>\videos`).
 
 ## License notes
 

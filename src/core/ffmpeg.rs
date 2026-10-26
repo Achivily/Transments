@@ -72,6 +72,10 @@ pub struct MediaInfo {
     pub duration: f64,
     pub video: Option<String>,
     pub audio: Option<String>,
+    /// Pixel format of the main video stream, e.g. "yuv420p10le".
+    pub pix_fmt: Option<String>,
+    /// Bits per second of the first audio stream, when the container reports it.
+    pub audio_bitrate: Option<u64>,
 }
 
 #[derive(Deserialize)]
@@ -85,6 +89,8 @@ struct ProbeOut {
 struct ProbeStream {
     codec_type: Option<String>,
     codec_name: Option<String>,
+    pix_fmt: Option<String>,
+    bit_rate: Option<String>,
     #[serde(default)]
     disposition: Option<Disposition>,
 }
@@ -102,7 +108,7 @@ struct ProbeFormat {
 
 pub fn probe(tools: &Tools, input: &Path) -> Result<MediaInfo, String> {
     let out = command(&tools.ffprobe)
-        .args(["-v", "error", "-show_entries", "format=duration:stream=codec_type,codec_name:stream_disposition=attached_pic", "-of", "json"])
+        .args(["-v", "error", "-show_entries", "format=duration:stream=codec_type,codec_name,pix_fmt,bit_rate:stream_disposition=attached_pic", "-of", "json"])
         .arg(input)
         .output()
         .map_err(|e| format!("ffprobe failed: {e}"))?;
@@ -117,15 +123,17 @@ pub fn probe(tools: &Tools, input: &Path) -> Result<MediaInfo, String> {
             .iter()
             .filter(|s| s.codec_type.as_deref() == Some(kind))
             .find(|s| s.disposition.as_ref().map_or(true, |d| d.attached_pic == 0))
-            .and_then(|s| s.codec_name.clone())
     };
+    let (video, audio) = (first("video"), first("audio"));
     Ok(MediaInfo {
         duration: parsed
             .format
             .and_then(|f| f.duration)
             .and_then(|d| d.parse().ok())
             .unwrap_or(0.0),
-        video: first("video"),
-        audio: first("audio"),
+        video: video.and_then(|s| s.codec_name.clone()),
+        audio: audio.and_then(|s| s.codec_name.clone()),
+        pix_fmt: video.and_then(|s| s.pix_fmt.clone()),
+        audio_bitrate: audio.and_then(|s| s.bit_rate.as_deref()).and_then(|b| b.parse().ok()),
     })
 }

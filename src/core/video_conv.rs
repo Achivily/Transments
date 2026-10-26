@@ -215,6 +215,7 @@ pub fn run(service: &Service, tools: Option<&Tools>, job: &VideoJob, progress: i
                     status: "running",
                     message: None,
                     percent: Some(percent),
+                    output_size: None,
                 })
             })
         },
@@ -244,7 +245,7 @@ fn convert_one(
     result.map(|_| out.to_string_lossy().into_owned())
 }
 
-fn same_file(a: &Path, b: &Path) -> bool {
+pub(crate) fn same_file(a: &Path, b: &Path) -> bool {
     match (a.canonicalize(), b.canonicalize()) {
         (Ok(a), Ok(b)) => a == b,
         _ => false,
@@ -260,7 +261,26 @@ pub fn transcode(
     cancel: &AtomicBool,
     on_percent: &dyn Fn(f64),
 ) -> Result<(), String> {
-    let mut child = ffmpeg::command(&tools.ffmpeg)
+    transcode_in(tools, None, input, out, args, duration, cancel, on_percent)
+}
+
+/// Like [`transcode`], with ffmpeg started in `cwd` (two-pass encoders write their stats there).
+#[allow(clippy::too_many_arguments)]
+pub fn transcode_in(
+    tools: &Tools,
+    cwd: Option<&Path>,
+    input: &Path,
+    out: &Path,
+    args: &[String],
+    duration: f64,
+    cancel: &AtomicBool,
+    on_percent: &dyn Fn(f64),
+) -> Result<(), String> {
+    let mut cmd = ffmpeg::command(&tools.ffmpeg);
+    if let Some(dir) = cwd {
+        cmd.current_dir(dir);
+    }
+    let mut child = cmd
         .args(["-hide_banner", "-nostdin", "-loglevel", "error", "-nostats", "-progress", "pipe:1", "-y", "-i"])
         .arg(input)
         .args(args)
@@ -321,7 +341,7 @@ mod tests {
     use super::*;
 
     fn info(v: &str, a: Option<&str>) -> MediaInfo {
-        MediaInfo { duration: 1.0, video: Some(v.into()), audio: a.map(Into::into) }
+        MediaInfo { duration: 1.0, video: Some(v.into()), audio: a.map(Into::into), ..Default::default() }
     }
 
     #[test]
